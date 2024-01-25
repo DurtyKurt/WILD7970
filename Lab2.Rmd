@@ -84,7 +84,7 @@ plot(st_geometry(Baldwin))
 st_crs(Baldwin)$proj4string
 
 
-BushyCreekDyasCreek_Huc12 <- st_read("BushyCreek_DyasCreek_Extent.shp")
+BushyCreekDyasCreek_Huc12 <-st_read("/vsicurl/https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreek_DyasCreek_Extent.shp")
 plot(st_geometry(BushyCreekDyasCreek_Huc12))
 st_crs(BushyCreekDyasCreek_Huc12)$proj4string
 
@@ -102,7 +102,7 @@ studyArea = st_transform(studyArea, st_crs(WETSf))
 
 ### CCAP
 ```{r}
-CCAP <- rast("al_2015_ccap_proj_NAD.tif")
+CCAP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/CCAP_clip.tif")
 plot(CCAP)
 
 CCAP_Baldwin_Crop = crop(CCAP, Baldwin)
@@ -132,7 +132,7 @@ plot(studyArea, border='red', add=T)
 ```
 ### WIP Overlay of StudyArea
 ```{r}
-WIP <- rast("BushyCreekDyasCreek_WIP03.tif")
+WIP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreekDyasCreek_WIP03.tif")
 
 plot(WIP)
 plot(st_geometry(BushyCreekDyasCreek_Huc12), add=T)
