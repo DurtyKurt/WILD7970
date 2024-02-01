@@ -1,0 +1,194 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+### Load Packages & Site Data
+```{r}
+require(tidyverse)
+require(sf)
+require(tigris)
+require(geodata)
+require(terra)
+require(raster)
+require(colorspace)
+require(tidyterra)
+require(ggnewscale)
+require(cowplot)
+require(nhdplusTools)
+require(FedData)
+
+TrainingDataWET = read.csv('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/TrainingData_WET_100.csv')
+TrainingDataUPL = read.csv('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/TrainingData_UPL_200.csv')
+```
+
+### Plot Corrdinates in ggplot
+
+```{r}
+ggplot(TrainingDataUPL, aes(x=POINT_X, y=POINT_Y))+
+  geom_point()
+
+ggplot(TrainingDataWET, aes(x=POINT_X, y=POINT_Y))+
+  geom_point()
+```
+
+### Create Spatial Features from objects
+```{r}
+WETSf = st_as_sf(TrainingDataWET, coords=c('POINT_X', 'POINT_Y'), crs='+proj=utm +zone=16 +datum=NAD83 +units=m +no_defs +type=crs')
+plot(st_geometry(WETSf))
+
+UPLSf = st_as_sf(TrainingDataUPL, coords=c('POINT_X', 'POINT_Y'), crs='+proj=utm +zone=16 +datum=NAD83 +units=m +no_defs +type=crs')
+plot(st_geometry(UPLSf))
+```
+### Create Bounding Box
+```{r}
+#Extract x and y coordinates of the bounding box
+studyArea = st_bbox(UPLSf)
+studyArea
+
+#Let's add 2000 m to each dimension
+studyArea = studyArea + c(-1500, -1500, 1500, 1500)
+studyArea
+
+#And now we convert it to a spatial sfc object
+studyArea = st_as_sfc(studyArea)
+
+plot(studyArea)
+```
+### Polygon for Baldiwn County
+```{r}
+Alabama = states() %>% 
+  filter(NAME=='Alabama')
+
+plot(st_geometry(Alabama))
+st_crs(Alabama)$proj4string
+
+Baldwin = county_subdivisions(01, county = 003)
+plot(st_geometry(Baldwin))
+st_crs(Baldwin)$proj4string
+
+
+BushyCreekDyasCreek_Huc12 <-st_read("/vsicurl/https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreek_DyasCreek_Extent.shp")
+plot(st_geometry(BushyCreekDyasCreek_Huc12))
+st_crs(BushyCreekDyasCreek_Huc12)$proj4string
+
+```
+### Transform to NAD
+```{r}
+Alabama = st_transform(Alabama, st_crs(WETSf))
+
+Baldwin = st_transform(Baldwin, st_crs(WETSf))
+
+BushyCreekDyasCreek_Huc12 = st_transform(BushyCreekDyasCreek_Huc12, st_crs(WETSf))
+
+studyArea = st_transform(studyArea, st_crs(WETSf))
+```
+
+### CCAP
+```{r}
+CCAP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/CCAP_clip.tif")
+plot(CCAP)
+
+CCAP_Huc12_Crop = crop(CCAP, BushyCreekDyasCreek_Huc12)
+plot(CCAP_Huc12_Crop)
+CCAP_Huc12_Mask = mask(CCAP_Huc12_Crop, BushyCreekDyasCreek_Huc12)
+plot(CCAP_Huc12_Mask)
+```
+
+### Overlay (Alabama/StudyArea)
+```{r}
+plot(st_geometry(Alabama))
+plot(studyArea, border='red', add=T)
+
+```
+### Overlay (StudyArea/Sites)
+```{r}
+plot(CCAP_Huc12_Mask)
+plot(st_geometry(BushyCreekDyasCreek_Huc12), add =T)
+plot(st_geometry(WETSf), add=T)
+plot(st_geometry(UPLSf), add=T)
+plot(studyArea, border='red', add=T)
+```
+### WIP Overlay of StudyArea
+```{r}
+WIP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreekDyasCreek_WIP03.tif")
+
+plot(WIP)
+plot(st_geometry(BushyCreekDyasCreek_Huc12), add=T)
+
+```
+### WET vs. UPL via Thresholds
+```{r}
+WIP[WIP < 0.5] = 0
+WIP[WIP >= 0.5] = 1
+
+plot(WIP)
+```
+### CCAP Reclass: Forested Wetlands
+```{r}
+
+CCAP_Huc12_Mask[CCAP_Huc12_Mask < 13] = 0
+CCAP_Huc12_Mask[CCAP_Huc12_Mask > 13] = 0
+plot(CCAP_Huc12_Mask)
+
+```
+Projections
+```{r}
+
+crs(Baldwin, proj=T)
+crs(WETSf, proj=T)
+crs(UPLSf, proj=T)
+crs(CCAP_Huc12_Mask, proj=T)
+crs(WIP, proj=T)
+crs(BushyCreekDyasCreek_Huc12, proj=T)
+
+
+st_crs(studyArea)$proj4string
+
+```
+
+### ZoomedOut Map
+```{r}
+zoomedOut = ggplot()+
+  geom_sf(data = Baldwin)+
+  geom_sf(data = studyArea, fill=NA, color='red')
+
+zoomedOut
+  
+```
+Now let's just clean this up a bit.
+
+```{r}
+zoomedOut = zoomedOut +
+  theme_bw()+ #Gets rid of most of the colors
+  theme(panel.grid=element_blank(), #Removes the gridlines
+        axis.text=element_blank(), #Removes the axis text
+        axis.ticks=element_blank(), #Removes the axis tick marks
+        panel.border=element_blank()) #Removes the frame around the graph
+
+zoomedOut
+```
+
+
+
+
+
+
+
+
