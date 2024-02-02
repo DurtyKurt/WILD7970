@@ -34,8 +34,8 @@ require(cowplot)
 require(nhdplusTools)
 require(FedData)
 
-TrainingDataWET = read.csv('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/TrainingData_WET_100.csv')
-TrainingDataUPL = read.csv('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/TrainingData_UPL_200.csv')
+TrainingDataWET = read.delim('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/Lab02/TrainingDataWET.txt', sep="\t")
+TrainingDataUPL = read.delim('https://raw.githubusercontent.com/DurtyKurt/WILD7970/main/Lab02/TrainingDataUPL.txt', sep="\t")
 ```
 
 ### Plot Corrdinates in ggplot
@@ -84,7 +84,7 @@ plot(st_geometry(Baldwin))
 st_crs(Baldwin)$proj4string
 
 
-BushyCreekDyasCreek_Huc12 <-st_read("/vsicurl/https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreek_DyasCreek_Extent.shp")
+BushyCreekDyasCreek_Huc12 <-st_read("/vsicurl/https://github.com/DurtyKurt/WILD7970/raw/main/Lab02/BushyCreek_DyasCreek_Extent.shp")
 plot(st_geometry(BushyCreekDyasCreek_Huc12))
 st_crs(BushyCreekDyasCreek_Huc12)$proj4string
 
@@ -102,8 +102,13 @@ studyArea = st_transform(studyArea, st_crs(WETSf))
 
 ### CCAP
 ```{r}
-CCAP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/CCAP_clip.tif")
+CCAP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/Lab02/CCAP_clip.tif")
 plot(CCAP)
+
+CCAP_Baldwin_Crop = crop(CCAP, Baldwin)
+plot(CCAP_Baldwin_Crop)
+CCAP_Baldwin_Mask = mask(CCAP_Baldwin_Crop, Baldwin)
+plot(CCAP_Baldwin_Mask)
 
 CCAP_Huc12_Crop = crop(CCAP, BushyCreekDyasCreek_Huc12)
 plot(CCAP_Huc12_Crop)
@@ -127,28 +132,28 @@ plot(studyArea, border='red', add=T)
 ```
 ### WIP Overlay of StudyArea
 ```{r}
-WIP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/BushyCreekDyasCreek_WIP03.tif")
+WIP <- rast("https://github.com/DurtyKurt/WILD7970/raw/main/Lab02/BushyCreekDyasCreek_WIP03.tif")
 
 plot(WIP)
 plot(st_geometry(BushyCreekDyasCreek_Huc12), add=T)
 
 ```
-### WET vs. UPL via Thresholds
-```{r}
-WIP[WIP < 0.5] = 0
-WIP[WIP >= 0.5] = 1
 
-plot(WIP)
-```
 ### CCAP Reclass: Forested Wetlands
 ```{r}
 
-CCAP_Huc12_Mask[CCAP_Huc12_Mask < 13] = 0
-CCAP_Huc12_Mask[CCAP_Huc12_Mask > 13] = 0
+CCAP_Huc12_Mask[CCAP_Huc12_Mask != 13] = 0
+
 plot(CCAP_Huc12_Mask)
 
+tmp = data.frame('ID' = c(0, 13), 'category' = c('Uplands/Non-forested Wetlands', 'Forested Wetlands'))
+tmp
+ForestedWetlands = categories(CCAP_Huc12_Mask, value=tmp)
+
+plot(ForestedWetlands)
+
 ```
-Projections
+### Check Projections
 ```{r}
 
 crs(Baldwin, proj=T)
@@ -162,11 +167,16 @@ crs(BushyCreekDyasCreek_Huc12, proj=T)
 st_crs(studyArea)$proj4string
 
 ```
+### Define Projections
+```{r}
+Alabama = st_transform(Alabama, crs(WETSf, proj=T))
+```
+
 
 ### ZoomedOut Map
 ```{r}
-zoomedOut = ggplot()+
-  geom_sf(data = Baldwin)+
+zoomedOutAlabama = ggplot()+
+  geom_sf(data = Alabama, fill='grey')+
   geom_sf(data = studyArea, fill=NA, color='red')
 
 zoomedOut
@@ -175,15 +185,80 @@ zoomedOut
 Now let's just clean this up a bit.
 
 ```{r}
-zoomedOut = zoomedOut +
+zoomedOutAL = zoomedOutAlabama +
   theme_bw()+ #Gets rid of most of the colors
   theme(panel.grid=element_blank(), #Removes the gridlines
         axis.text=element_blank(), #Removes the axis text
         axis.ticks=element_blank(), #Removes the axis tick marks
         panel.border=element_blank()) #Removes the frame around the graph
-
-zoomedOut
+zoomedOutAL
 ```
+### Zoomed IN
+
+```{r}
+zoomedInWIP = ggplot()+
+  geom_sf(data = studyArea, fill=NA, color='red') +
+  geom_spatraster(data = WIP)+
+  scale_fill_gradient(low='white', high='blue', na.value=NA,
+labs(fill='Wetland Intrinsic Potential'))+
+  geom_sf(data = BushyCreekDyasCreek_Huc12, fill=NA, color='black')
+
+zoomedInWIP
+```
+
+```{r}
+
+zoomedInCCAP = ggplot()+
+  geom_sf(data = studyArea, fill=NA, color='red') +
+  geom_spatraster(data=ForestedWetlands)+
+  labs(fill='land class')
+zoomedInCCAP
+```
+# Cowplotting these together
+```{r}
+AL=plot_grid(zoomedOutAL)
+AL
+
+```
+# Zoomed In
+```{r}
+legendCCAP = get_legend(zoomedInCCAP)
+ggdraw(legendCCAP)
+legendWIP = get_legend(zoomedInWIP)
+ggdraw(legendWIP)
+```
+
+```{r}
+
+zoomedInCCAPnew = zoomedInCCAP + theme(legend.position='none')
+zoomedInWIPnew = zoomedInWIP + theme(legend.position='none')
+```
+
+
+```{r}
+
+supportingFig = plot_grid(zoomedInCCAPnew, zoomedInWIPnew, rel_heights = c(1, 1), rel_widths = c(1,1))
+supportingFig
+supportingFigLegends =plot_grid(legendCCAP, legendWIP, rel_heights= c(1,1), rel_widths= c(1,1))
+supportingFigLegends
+
+```
+
+### PLOT
+```{r}
+maps= plot_grid(zoomedOutAL, supportingFig, rel_widths=c(1,5), rel_heights=c(1,5))   
+maps  
+
+ggsave2('finalMap.jpg', plot= plot_grid(maps, supportingFigLegends, nrow=2, ncol=1, rel_widths=c(2, 0.5), rel_heights=c(1,0.5)), width=7, height=7, units='in', dpi=300) 
+
+```
+### My study area is a HUC12 (hydrologic unit) in southern Alabama. My larger project area is the extent of Balwin and Mobile counties, though I'm not settled on the final study area at which I will apply this model yet. I chose this HUC12 for the time being, because it's a relatively unmodified watershed compared to others in the project area. This is important for homing in on geomorpologic attributes and unmodified hydrology as a first pass for this model in southern Alabama, as a sort of reference. I had trouble calling in watersheds from the nhdtools package in r, so I loaded this in from my personal drive to github along with the landclass and WIP model. the Alabama shapefile came from the tiger package. I pulled training data locations as a csv from github for coordinate system conversions. 
+
+
+
+
+
+
 
 
 
