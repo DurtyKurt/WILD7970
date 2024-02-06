@@ -1,0 +1,233 @@
+---
+title: "Lab 4 Assignment - Landcover"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+
+```{r}
+rm(list=ls())
+require(Voss)
+require(tidyverse)
+require(terra)
+require(FedData)
+require(sf)
+require(tidyterra)
+require(landscapemetrics)
+```
+
+## Challenge 1 (4 points)
+
+**The landscapemetrics package has functions for calculating 12 patch-level metrics. Calculate all 12 of these for every forest patch in our nlcdSimple raster (using the 8-direction rule). This will result in 12 unique values associated with each forest patch. Use the chart.Correlation() function from the PerformanceAnalytics package to examine the correlation among all 12 of these variables. What patterns do you notice, and what do they tell you about the uniqueness or redundancy of the patch-level metrics you calculated?**
+### Setup
+```{r}
+studyArea = st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week4/studyArea.shp')
+nlcd = get_nlcd(studyArea, label='AlLandscape', year=2011)
+
+# values(nlcd) = as.character(values(nlcd))
+
+plot(nlcd)
+
+nlcdSimple = nlcd
+nlcdSimple[nlcdSimple==11] = 1 #Wet areas are a 1 now
+nlcdSimple[nlcdSimple %in% c(21, 22, 23, 24)] = 2 #All developed areas are 2
+nlcdSimple[nlcdSimple %in% c(31, 52)] = 3 #Barren land and shrub/scrub are 3
+nlcdSimple[nlcdSimple %in% c(41,42,43)] = 4 #All forest types are 4
+nlcdSimple[nlcdSimple == 71] = 5 #Grassland is 5
+nlcdSimple[nlcdSimple %in% c(81,82)] = 6 #And agriculture is 6
+
+#Give these numbers category names
+tmp = data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcdSimple = categories(nlcdSimple, value=tmp)
+
+#And plot the new raster
+ggplot(nlcdSimple, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+  scale_fill_manual(values=c('blue', 'black', 'gray', 'darkolivegreen', 'orange', 'yellow'))
+
+res(nlcdSimple)
+ext(nlcdSimple)
+levels(nlcdSimple)
+
+
+forest = nlcdSimple %>% 
+  setValues(NA)
+  
+forest[nlcdSimple ==4] = 1
+
+plot(forest)
+
+forestPatchId = patches(forest, directions=8, zeroAsNA=T, allowGaps=F)
+
+plot(forestPatchId)
+```
+
+### Code
+
+```{r}
+# Patch Area
+## literally just the area of all patches
+patchArea = lsm_p_area(forest, directions=8)
+patchArea
+
+# Core Area Index
+## the percentage of a patch that is core area. describes patch area and shape simultaneous. relative metric, independent of total area.
+patchCAI = lsm_p_cai(forest, directions = 8)
+patchCAI
+
+# Core Area
+## the area within a patch that is not on the edge...
+patchCore = lsm_p_core(forest, directions=8)
+patchCore
+
+# Patch Circle
+## ratio between the patch area and the smallest circumscribing circle of the patch. measure of compactness of the patch.
+patchCircle = lsm_p_circle(forest, directions = 8)
+patchCircle
+
+# Contiguity
+## weighted average which favors rook over queen for connectivity index. 
+patchCont = lsm_p_contig(forest, directions = 8)
+patchCont
+
+# Euclidean Nearest-Neighbor Distance
+## the distance to the nearest neighboring patch of the same class. edge to edge. simple isolation metrics.
+patchEnn = lsm_p_enn(forest, directions=8)
+patchEnn
+
+# Fractal dimension index
+## Shape metric, index based on the patch perimeter and the patch area and describes the patch complexity. Fractals are weird shapes you see when you listen to TOOL...not circles and squares.
+patchFDI = lsm_p_frac(forest, directions = 8)
+patchFDI
+
+# Radius of Gyration (Area and edge metric)
+## Area and edge metric. The distance from each cell to the patch centroid is based on cell center to centroid distances. Characterizes both the patch area and compactness.
+patchGyrate = lsm_p_gyrate(forest, directions = 8)
+patchGyrate
+
+# number of core areas
+## Core area metric. Describes patch area and shape simultaneously. Patches within patch. a compact shape will contain less disjunct core areas and vice versa.
+patchNcore = lsm_p_ncore(forest, directions = 8)
+patchNcore
+
+# perimeter area ratio
+## self evident. Scale dependent because of variability of shapes with perimeter.
+patchPara = lsm_p_para(forest, directions=8)
+patchPara
+
+# Perimeter
+## Just the perimeter. Don't discount how shape influences on top of area.
+patchPerim = lsm_p_perim(forest, directions=8)
+patchPerim
+
+# Shape Index
+## Shape complexity
+patchShape = lsm_p_shape(forest, directions = 8)
+patchShape
+
+# Chart correlation matrix
+#This is where we are going to store the output values
+forestData %>% 
+  as.data.frame() %>% 
+  select(for100m, for500m, for1km, for2km, for3km, for4km, for5km) %>% 
+  PerformanceAnalytics::chart.Correlation(histogram=F)
+```
+
+
+Answer Challenge 1 with your written text here.
+
+
+## Challenge 2 (4 points)
+
+**In our lab, we used the 8-direction or "queen" rule to delineate patches. Using the nlcdSimple raster we created, explore the differences in patch characteristics if you were to use the 4-direction or "rook" rule for delineating patches. Calculate the following class-level metrics for forest cover for both the queen and rook patch delineation rules: number of patches, mean patch size, standard deviation in patch size, nearest-neighbor distance, and total edge length. What patterns do you notice? When might it be appropriate to use one rule vs. the other?**
+
+```{r}
+classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+
+
+
+lsm_c_area_mn(nlcdSimple, directions=8) %>% 
+  left_join(classCats, by='class')
+
+lsm_c_area_sd(nlcdSimple, directions=8) %>% 
+  left_join(classCats, by='class')
+```
+
+Answer Challenge 2 with your written text here.
+
+
+## Challenge 3 (4 points)
+
+
+**Using the same zoomed-in study area that we used in the lab, download NLCD raster data for the years 2001 and 2019 and simplify these rasters into 6 landcover categories (wet, developed, barren, forest, grassland, and agriculture). Plot these two rasters. What are some of the initial changes you notice between 2001 and 2019?**
+
+```{r}
+# Place your R code here.
+```
+
+Place your text here.
+
+**Quantify this at the class level by calculating and reporting the changes in (1) the total amount of each land cover type (2) mean patch size for each land cover type, and (3) mean nearest neighbor distance for each cover type between the years 2011 and 2019. Give a short description of how you interpret the changes in these values.**
+
+```{r}
+# Place your R code here.
+```
+
+Place your text here.
+
+**Quantify these changes at the landscape level by calculating and reporting on changes in the (1) Shannon diversity and (2) Shannon evenness of the landscapes at the different time points. Give a short description of how you interpret the changes in these values.**
+
+```{r}
+# Place your R code here.
+```
+
+Place your text here.
+
+
+
+## Challenge 4 (4 points)
+
+**Use the voss2d() function to simulate a surface where g = 7 and H = 0.5. From that, create 9 'landscapes' with 10%, 20%, 30%, ..., 90% threshold values. The '1' values here can represent anything your imagination comes up with. It could be forest cover, cover of some other land cover type, bodies of water, temperatures above a threshold, etc. I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the value increases from a 10% cover to 90% cover.**
+
+```{r}
+set.seed(23)
+
+# Place your R code here.
+
+```
+
+Place your text here.
+
+**Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is threshold value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
+
+```{r}
+# Place your R code here.
+```
+
+Place your text here.
+
+## Challenge 5 (4 points)
+
+**Use the voss2d() function to simulate 9 surfaces. In each one, g should be 7, but vary the value of H from 0.1 to 0.9. Create a unique landscape from each of these with a threshold value of 30% cover. Again, the 1 values can represent anything you desire, and again I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the H value increases from 0.1 to 0.9.**
+
+```{r}
+set.seed(23)
+
+# Place your R code here.
+
+```
+
+Place your text here.
+
+**Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. THESE MUST BE DIFFERENT THAN THOSE METRICS YOU USED IN CHALLENGE 2. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is H-value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
+
+```{r}
+# Place your R code here.
+```
+
+Place your text here.
+
