@@ -1,0 +1,331 @@
+---
+title: "Lab 3 Assignment - Scale"
+output: html_notebook
+---
+```{r}
+require(sf)
+require(AICcmodavg)
+require(tidyverse)
+require(tigris)
+require(FedData)
+require(terra)
+```
+
+
+## Challenge 1 (4 points)
+
+**Build a raster with 100 rows and 100 columns. Fill the raster cells with values of a random variable drawn from a distribution of your choosing (Poisson, Normal, Uniform, etc.). Calculate the mean and variance of the values in that raster. Now increase the grain size of those cells by factors of 2, 5, and 10, combining cell values using a mean function. At each iteration, calculate the mean and variance of the values in the resulting raster. Generate 2 scatterplots that have grain size on the x-axis. Plot the mean raster value on the y-axis of the first, and variance on the y-axis of the second. What do you notice about how these values change as you "scale up" the grain size? Why do you think this pattern occurs?**
+
+Place your code in the code chunk below so I can reproduce your analyses/figures.
+
+```{r}
+# create OG raster
+simpRast = rast(ncol=100, nrow=100, xmin=1, xmax=100, ymin=1, ymax=100)
+plot(simpRast)
+
+set.seed(23)
+simpRast[] = rpois(ncell(simpRast), lambda=3)
+
+# plot OG raster
+plot(simpRast)
+text(simpRast, digits=2)
+global(simpRast, mean)
+global(simpRast, var)
+## Mean = 3.0078
+## Var = 2.93643
+
+# subsequent rasters
+simpRastMean2 <- aggregate(simpRast, fact =2, fun='mean')
+plot(simpRastMean2)
+text(simpRastMean2,digits=2)
+mean(as.matrix(simpRastMean2))
+var(as.matrix(simpRastMean2))
+## Mean = 3.0078
+## Var = 0.7234786
+
+simpRastMean5 <- aggregate(simpRast, fact =5, fun='mean')
+plot(simpRastMean5)
+text(simpRastMean5,digits=2)
+mean(as.matrix(simpRastMean5))
+var(as.matrix(simpRastMean5))
+## Mean = 3.0078
+## Var = 0.1325425
+
+simpRastMean10 <- aggregate(simpRast, fact =10, fun='mean')
+plot(simpRastMean10)
+text(simpRastMean10,digits=2)
+mean(as.matrix(simpRastMean10))
+var(as.matrix(simpRastMean10))
+## Mean = 3.0078
+## Var = 0.02759511
+
+ymean <-c(3.0078, 3.0078, 3.0078, 3.0078)
+yvar <-c(2.93643, 0.7234786, 0.1325425, 0.02759511)
+xgrain <-c(1,2,5,10)
+mean_vs_grain = plot(x= xgrain, y=ymean)
+mean_vs_grain
+var_vs_grain = plot(x= xgrain, y=yvar)
+var_vs_grain
+
+```
+
+
+The mean is unchanged in each iteration, which makes sense. I'm not sure if there's a mathematical rule to refer to this, but essentially averaging all the values in a data set shouldn't affect the outcome of the average whether you did it in a list, one at a time, or in equally distributed subsets, which are then averaged together. This just makes sense to me and I don't know how to use math to prove it, but I've seen the same thing working with using all samples from subplot level data to get plot level averages. Variance has a negative relationship with grain size, where larger grains aggregate more ('sub')values together and the new values are closer to the mean of the data set overall. By the time you end up with the coarsest grain, the original values which were furthest from the mean have now been smoothed out.
+
+
+## Challenge 2 (4 points)
+
+**Identify a situation in which you might use a summary function other than the mean to calculate new cell values when you scale up the grain of a raster (e.g., median, mode, minimum, maximum, etc.). Repeat the effort from Challenge 1 using this alternate function. Again, create two scatterplots showing how the mean and variance values of the raster change as you scale up the cell size by factors of 2, 5, and 10. Do you see a similar pattern? Compare and contrast your findings with those from Challenge 1.**
+
+*Hint: You should be able to recycle your code from Challenge 1 with only a couple of small tweaks to answer this question.*
+
+Place your code in the code chunk below so I can reproduce your analyses/figures.
+
+```{r}
+# create OG raster
+simpRast = rast(ncol=100, nrow=100, xmin=1, xmax=100, ymin=1, ymax=100)
+plot(simpRast)
+
+set.seed(23)
+simpRast[] = rpois(ncell(simpRast), lambda=3)
+
+# plot OG raster
+plot(simpRast)
+text(simpRast, digits=2)
+global(simpRast, mean)
+global(simpRast, var)
+## Mean = 3.0078	
+## Var = 2.936433
+
+# subsequent rasters
+simpRastMean2 <- aggregate(simpRast, fact =2, fun='max')
+plot(simpRastMean2)
+text(simpRastMean2,digits=2)
+mean(as.matrix(simpRastMean2))
+var(as.matrix(simpRastMean2))
+## Mean = 4.82
+## Var = 2.053221
+
+simpRastMean5 <- aggregate(simpRast, fact =5, fun='max')
+plot(simpRastMean5)
+text(simpRastMean5,digits=2)
+mean(as.matrix(simpRastMean5))
+var(as.matrix(simpRastMean5))
+## Mean = 6.76
+## Var = 1.310677
+
+simpRastMean10 <- aggregate(simpRast, fact =10, fun='max')
+plot(simpRastMean10)
+text(simpRastMean10,digits=2)
+mean(as.matrix(simpRastMean10))
+var(as.matrix(simpRastMean10))
+## Mean = 7.94
+## Var = 1.208485
+
+ymean <-c(3.0078, 4.82, 6.76, 7.94)
+yvar <-c(2.93643, 2.053221, 1.310677, 1.208485)
+xgrain <-c(1,2,5,10)
+mean_vs_grain = plot(x= xgrain, y=ymean)
+mean_vs_grain
+var_vs_grain = plot(x= xgrain, y=yvar)
+var_vs_grain
+```
+
+The relationships between grain size and mean/variance were positive and negative respectively, with each showing a logistic pattern of quickly rising/falling and settling into an equilibrium as the grains became larger. This was expected due to the nature of the 'max' value, which aggregates based on a single cell in each cell groupings neighborhood. The resulting values in each aggregation are moving away from the mean towards the upper end of the data sets distribution, and the variance has the same effect in the first example, though less drastic initially because the ranges of each aggregation are not being smoothed out the same way that mean does this. Obviously, this kind of method is less representative of what we think of in terms of representing the landscape in normally (or poison) distributed ways, and might be a good way to highlight max values of interest. For instance, using the max value for canopy cover to identify areas which have the densest canopies suitable for a forest interior specialist or maybe even where the densest mesquite/oak mots are across a vast expanse of range land for ocelot purposes. Maybe the cover value is important at the original resolution, but we don't want to sort through all the landscape noise around it to get there. I guess maybe it's also the difference between a continuum of well mixed heterogeneity (mean for large expanse of forest with different sub-forest types) and landscapes with more homogeneous features with 'not well mixed' heterogeneity (max/min/other for mesquite mots/range lands). 
+
+## Challenge 3 (2 points)
+
+**Recall that before we calculated forest cover, we cropped our NLCD raster to minimize its size and the computing effort necessary from our poor little computers. How might that affect our ability to evaluate the scale at which five-lined skinks respond to forest cover? Why?**
+
+My immediate thought is that the new extent would limit the greatest grain size that we could evaluate, though with the distribution of data points, this didn't seem like it would be an issue. It could be an issue if data points were closer to the bounds of the extent however, and furthermore, what is beyond that extent could be important for evaluating this scale. I would expect less of an effect (bias?) in points near the center and more of an effect near the edges. Maybe an appropriate buffer distance could be carefully thought out before doing this. Yes, the buffer distance was 1 km but should have been 5 km minimum, and maybe should have included a minimum distance beyond that to account for the window of effect outside of the 5km window.
+
+## Challenge 4 (4 points)
+
+**In the lab, we measured forest cover at 1 km and 5 km. Extract forest cover proportions around each sample point for 100 m, 500 m, 1 km, 2 km, 3 km, 4 km, and 5 km scales. Examine the correlation between these 7 variables (remember the chart.Correlation() function). What patterns do you notice in correlation among these variables?**
+
+*Hint: Recall the for loop we used to calculate this variable at two scales... could you make a small addition here to look at more scales?*
+### Setup Code
+```{r}
+
+sites = st_read("/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week3/reptiledata.shp") %>% 
+  filter(management!='Corn')
+st_crs(sites) = "+proj=aea +lat_0=23 +lon_0=-96 +lat_1=29.5 +lat_2=45.5 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
+head(sites)
+
+
+states = states() %>% 
+  filter(NAME %in% c('Alabama', 'Florida', 'Georgia')) %>% 
+  st_transform(crs(sites, proj=T))
+
+
+
+ggplot()+
+  geom_sf(data = states)+
+  geom_sf(data = sites)
+
+presAbs = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week3/reptiles_flsk.csv')
+
+sites = sites %>% 
+  left_join(presAbs, by='site')
+
+
+#Extract x and y coordinates of the bounding box
+studyArea = st_bbox(sites) + c(-10000, -10000, 10000, 10000)
+studyArea = st_as_sfc(studyArea)
+
+
+ggplot()+
+  geom_sf(data = states)+
+  geom_sf(data = studyArea, fill=NA, color='red')+
+  geom_sf(data = sites)
+
+nlcd = get_nlcd(studyArea,
+                label='studyArea',
+                year = 2016,
+                dataset = 'landcover',
+                landmass = 'L48'
+)
+
+
+
+plot(nlcd, 1, legend=T, plg=list(cex=0.5))
+plot(st_geometry(sites), add=T, pch=16)
+
+crs(nlcd, proj=T)
+
+ext(nlcd)
+
+res(nlcd)
+
+ncell(nlcd)
+
+
+levels(nlcd)
+
+
+forest = nlcd %>% 
+  setValues(0)
+
+forest[nlcd=='Deciduous Forest' | nlcd=='Evergreen Forest' | nlcd=='Mixed Forest'] = 1
+plot(forest)
+plot(st_geometry(sites), add=T, pch=16, col='black')
+
+
+buffSite5km = st_buffer(sites[1,], dist=5000)
+buffSite1km = st_buffer(sites[1,], dist=1000)
+
+
+zoom(nlcd, buffSite5km)
+plot(st_geometry(buffSite5km), border='black', lwd=5, add=T)
+plot(st_geometry(buffSite1km), border='black', lwd=3, add=T)
+plot(st_geometry(sites[1,]), pch=16, cex=2, color='black', add=T)
+
+zoom(forest, buffSite5km)
+plot(st_geometry(buffSite5km), border='black', lwd=5, add=T)
+plot(st_geometry(buffSite1km), border='black', lwd=3, add=T)
+plot(st_geometry(sites[1,]), pch=16, cex=2, color='black', add=T)
+
+buffFor1km = crop(forest, buffSite1km, mask=T)
+plot(buffFor1km)
+
+numCells = global(buffFor1km, 'sum', na.rm=T)
+numCells
+
+#Square meters in a single cell
+cellArea = prod(res(buffFor1km))
+cellArea
+
+#Square meters of forest within 1 km
+forestAreaM = numCells * cellArea
+forestAreaM
+
+#Hectares of forest within 1 km
+forestAreaHa = forestAreaM / 10000
+forestAreaHa
+
+#Total area within 1 km
+totalAreaHa = (pi*1000^2) / 10000
+totalAreaHa
+
+#Proportion of 1 km comprised of forest
+propForest = forestAreaHa / totalAreaHa
+propForest
+
+
+```
+
+### Loop Function
+```{r}
+### Loop Funcion
+
+bufferCover = function(shp, size, landcover){
+  buffArea = (pi*size^2)/10000
+  grainArea = (prod(res(landcover)))/10000
+  
+  buffi = st_buffer(shp[i,], dist=size)
+  cropi = crop(landcover, buffi, mask=T)
+  numCells = global(cropi, 'sum', na.rm=T)
+  forestHa = numCells * grainArea
+  propForest = forestHa / buffArea
+  
+  return(propForest)
+}
+
+
+#This is where we are going to store the output values
+for100m = as.vector(rep(NA, nrow(sites)))
+for500m = as.vector(rep(NA, nrow(sites)))
+for1km = as.vector(rep(NA, nrow(sites)))
+for2km = as.vector(rep(NA, nrow(sites)))
+for3km = as.vector(rep(NA, nrow(sites)))
+for4km = as.vector(rep(NA, nrow(sites)))
+for5km = as.vector(rep(NA, nrow(sites)))
+
+for(i in 1:nrow(sites)){
+  for100m[i] = bufferCover(sites, 100, forest)
+  for500m[i] = bufferCover(sites, 500, forest)
+  for1km[i] = bufferCover(sites, 1000, forest)
+  for2km[i] = bufferCover(sites, 2000, forest)
+  for3km[i] = bufferCover(sites, 3000, forest)
+  for4km[i] = bufferCover(sites, 4000, forest)
+  for5km[i] = bufferCover(sites, 5000, forest)
+}
+
+forestData = sites %>% 
+  mutate(for100m = unlist(for100m),
+         for500m = unlist(for500m),
+         for1km = unlist(for1km),
+         for2km = unlist(for2km),
+         for3km = unlist(for3km),
+         for4km = unlist(for4km),
+         for5km = unlist(for5km))
+
+head(forestData)
+```
+```{r}
+
+forestData %>% 
+  as.data.frame() %>% 
+  select(for100m, for200m, for1km, for2km, for3km, for4km, for5km) %>% 
+  PerformanceAnalytics::chart.Correlation(histogram=F)
+
+```
+
+
+## Challenge 5 (4 points)
+
+**Fit 8 logistic regression models (a null model and one for each of the 7 forest scales). Compare these models using AICc. Which scale do you think represents the critical or characteristic scale at which forest cover affects skink presence? Is this scale clearly better than the others, or is there some ambiguity? What are some mechanisms by which forest cover could affect skink presence at this scale? What is your overall conclusion regarding how forest cover affects skink presence (i.e., take a look at the betas)?**
+
+Place your R code in the chunk below.
+```{r}
+
+```
+
+Place your answer to the questions here.
+
+## Challenge 6 (2 points)
+
+**If you encounter ambiguity in identifying the characteristic scale of an effect, can you come up with a clever way to condense the information in the multi-scale variables into just one or two? When might it be ok to include two covariates in the same model (think multiple regression) that represent the same ecological feature measured at different scales (e.g., forest cover at 1 km AND forest cover at 5 km in the same model)? I can think of both a biological and a statistical answer to this question.**
+
+Place your answer to the questions here.
+
