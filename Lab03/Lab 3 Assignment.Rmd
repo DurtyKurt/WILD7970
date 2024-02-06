@@ -302,11 +302,15 @@ forestData = sites %>%
 
 head(forestData)
 ```
+
+
 ```{r}
 
+
+
 forestData %>% 
-  as.data.frame() %>% 
-  select(for100m, for200m, for1km, for2km, for3km, for4km, for5km) %>% 
+  as.data.frame() %>%
+  select(for100m, for500m, for1km, for2km, for3km, for4km, for5km) %>% 
   PerformanceAnalytics::chart.Correlation(histogram=F)
 
 ```
