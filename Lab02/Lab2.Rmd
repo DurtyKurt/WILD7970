@@ -179,7 +179,7 @@ zoomedOutAlabama = ggplot()+
   geom_sf(data = Alabama, fill='grey')+
   geom_sf(data = studyArea, fill=NA, color='red')
 
-zoomedOut
+zoomedOutAlabama
   
 ```
 Now let's just clean this up a bit.
@@ -259,7 +259,7 @@ ggsave2('finalMap.jpg', plot= plot_grid(maps, supportingFigLegends, nrow=2, ncol
 
 
 
-
+$\color{red}{\text{Very nice map, Kurtis. You lost 1 point for the lack of a legend, but overall very good work.}}$
 
 
 
