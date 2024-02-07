@@ -72,6 +72,8 @@ var_vs_grain
 
 The mean is unchanged in each iteration, which makes sense. I'm not sure if there's a mathematical rule to refer to this, but essentially averaging all the values in a data set shouldn't affect the outcome of the average whether you did it in a list, one at a time, or in equally distributed subsets, which are then averaged together. This just makes sense to me and I don't know how to use math to prove it, but I've seen the same thing working with using all samples from subplot level data to get plot level averages. Variance has a negative relationship with grain size, where larger grains aggregate more ('sub')values together and the new values are closer to the mean of the data set overall. By the time you end up with the coarsest grain, the original values which were furthest from the mean have now been smoothed out.
 
+$\color{red}{\text{Perfect. +4}}$
+
 
 ## Challenge 2 (4 points)
 
@@ -133,11 +135,15 @@ var_vs_grain
 
 The relationships between grain size and mean/variance were positive and negative respectively, with each showing a logistic pattern of quickly rising/falling and settling into an equilibrium as the grains became larger. This was expected due to the nature of the 'max' value, which aggregates based on a single cell in each cell groupings neighborhood. The resulting values in each aggregation are moving away from the mean towards the upper end of the data sets distribution, and the variance has the same effect in the first example, though less drastic initially because the ranges of each aggregation are not being smoothed out the same way that mean does this. Obviously, this kind of method is less representative of what we think of in terms of representing the landscape in normally (or poison) distributed ways, and might be a good way to highlight max values of interest. For instance, using the max value for canopy cover to identify areas which have the densest canopies suitable for a forest interior specialist or maybe even where the densest mesquite/oak mots are across a vast expanse of range land for ocelot purposes. Maybe the cover value is important at the original resolution, but we don't want to sort through all the landscape noise around it to get there. I guess maybe it's also the difference between a continuum of well mixed heterogeneity (mean for large expanse of forest with different sub-forest types) and landscapes with more homogeneous features with 'not well mixed' heterogeneity (max/min/other for mesquite mots/range lands). 
 
+$\color{red}{\text{Looks great. +4}}$
+
 ## Challenge 3 (2 points)
 
 **Recall that before we calculated forest cover, we cropped our NLCD raster to minimize its size and the computing effort necessary from our poor little computers. How might that affect our ability to evaluate the scale at which five-lined skinks respond to forest cover? Why?**
 
 My immediate thought is that the new extent would limit the greatest grain size that we could evaluate, though with the distribution of data points, this didn't seem like it would be an issue. It could be an issue if data points were closer to the bounds of the extent however, and furthermore, what is beyond that extent could be important for evaluating this scale. I would expect less of an effect (bias?) in points near the center and more of an effect near the edges. Maybe an appropriate buffer distance could be carefully thought out before doing this. Yes, the buffer distance was 1 km but should have been 5 km minimum, and maybe should have included a minimum distance beyond that to account for the window of effect outside of the 5km window.
+
+$\color{red}{\text{Nailed it. +2}}$
 
 ## Challenge 4 (4 points)
 
@@ -266,6 +272,21 @@ for3km = as.vector(rep(NA, nrow(sites)))
 for4km = as.vector(rep(NA, nrow(sites)))
 for5km = as.vector(rep(NA, nrow(sites)))
 
+
+bufferCover = function(shp, size, landcover){
+  buffArea = (pi*size^2)/10000
+  grainArea = (prod(res(landcover)))/10000
+  
+  buffi = st_buffer(shp[i,], dist=size)
+  cropi = crop(landcover, buffi, mask=T)
+  numCells = global(cropi, 'sum', na.rm=T)
+  forestHa = numCells * grainArea
+  propForest = forestHa / buffArea
+  
+  return(propForest)
+}
+
+
 for(i in 1:nrow(sites)){
   for100m[i] = bufferCover(sites, 100, forest)
   for500m[i] = bufferCover(sites, 500, forest)
@@ -287,6 +308,9 @@ forestData = sites %>%
 
 head(forestData)
 ```
+
+
+
 ```{r}
 
 forestData %>% 
@@ -296,7 +320,10 @@ forestData %>%
 
 ```
 
-The pattern I'm seeing is that correlation between skink occupancy with forest cover increases as grain size increases. I suppose this may have due to a decrease in variance as grain size increases as demonstrated in the last couple challenges. And of course, each gain size is most closley correlated with the next one up, but this isn't really telling of much. Just looking at the points falling closer to the regression line with each increasing grain size almost makes me cautious about what's going on in terms of correlation.. is it simply being driven by decreasing variance and is this generally going to be the pattern no matter the landscape metric? I guess that's what the AIC is for teasing out.   
+The pattern I'm seeing is that correlation between skink occupancy with forest cover increases as grain size increases. I suppose this may have due to a decrease in variance as grain size increases as demonstrated in the last couple challenges. And of course, each gain size is most closley correlated with the next one up, but this isn't really telling of much. Just looking at the points falling closer to the regression line with each increasing grain size almost makes me cautious about what's going on in terms of correlation.. is it simply being driven by decreasing variance and is this generally going to be the pattern no matter the landscape metric? I guess that's what the AIC is for teasing out.  
+
+$\color{red}{\text{Sort of. This plot doesn't tell us anything about the relationship between skink occupancy and forest cover. Rather, it is telling us how correlated the forest cover metrics are measured across scales. In other words. the proporiton of an area around a point comprised of forest at 4 km is almost completely correlated (r = 0.98) with the amount of forest cover within 5 km. I wanted you to notice that forest cover values measured with similar radii are highly correlated, and that correlation decreaes as the difference between the radii increases. You also lost half a point for reproducibility here because you didn't have the bufferCover function plugged into your code and so I had to go paste it in myself. +2.5}}$
+
 
 ## Challenge 5 (4 points)
 
@@ -316,6 +343,8 @@ model5km = glm(pres~for5km, family='binomial', data=forestData)
 aictab(list(modelNull, model100m, model500m, model1km, model2km, model3km, model4km, model5km), modnames=c('Null', '100m', '500m', '1 km', '2km', '3km', '4km', '5 km'))
 
 ```
+
+
 ```{r}
 effects2v4 = data.frame(model = c('2km', '4km'),
            beta = c(summary(model2km)$coefficients[2,1], summary(model4km)$coefficients[2,1]),
@@ -363,6 +392,9 @@ ggplot(effects4v5, aes(x=model))+
 
 Based on AIC scores, 2km is the scale of effect, which is good because we don't have to necessarily go above and below to test for the full range (theoretically). However, the difference between delta AIC and AIC scores for 2km and 4km are quite small which makes me wonder how much better 2km really is. In fact, there's not huge jump between 3 & 4, and 4 & 5, either. I think an increase of 2 is usually soley attributable to an additional parameter, but these aren't multivariable models...So I'm not too sure of the interpretation there. I guess I'll try the code for covariate comparison. Ok, there's not much a difference between betas for any of these. 2 is definitely the sweet spot, but there's not much of a difference.  
 
+$\color{red}{\text{What are some mechanisms by which forest cover could affect skink presence at this scale? I also wanted you to note that the probability a site is occupied by a skink is positively related to amount of forest cover, regardless of the scale at which you examine forest cover. +2}}$
+
+
 
 ## Challenge 6 (2 points)
 
@@ -370,3 +402,4 @@ Based on AIC scores, 2km is the scale of effect, which is good because we don't 
 
 Well, Todd's voice is ringing in my ear that we should throw all the models of various scales into a global model and do something along the lines of step-wise methods?...I'm not solid on the different versions of model testing anymore, but the idea being that you take out statistically non-significant variables until you only have the ones that contribute the most to the fit of the model, then you run AIC for different iterations of those models and identify the key scale that way. Then again, he's also telling me to do an F drop test between those final 2 models to see which one doesn't add any more explanation to the fit of the data to the model and select the former. I suppose a biological reason to test for this could be related to 2 different mechanisms at play, maybe one based on daily movements or territory size for communities at smaller grains, and the other being related to colonization and migration for populations at larger ones. 
 
+$\color{red}{\text{Nice. Just remember that you can't put two highly correlated variables in a model at the same time, so you're probably going to have to reduce the variables under consideration a priori. +2}}$
