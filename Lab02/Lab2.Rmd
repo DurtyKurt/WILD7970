@@ -259,7 +259,7 @@ ggsave2('finalMap.jpg', plot= plot_grid(maps, supportingFigLegends, nrow=2, ncol
 
 
 
-$\color{red}{\text{Very nice map, Kurtis. You lost 1 point for the lack of a legend, but overall very good work.}}$
+$\color{red}{\text{Very nice map, Kurtis. You lost 1 point for the lack of a legend, but overall very good work. - UPDATE: I see how you incorporated the legend now, so you earned your point back.}}$
 
 
 
