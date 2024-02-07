@@ -256,21 +256,6 @@ propForest
 
 ### Loop Function
 ```{r}
-### Loop Funcion
-
-bufferCover = function(shp, size, landcover){
-  buffArea = (pi*size^2)/10000
-  grainArea = (prod(res(landcover)))/10000
-  
-  buffi = st_buffer(shp[i,], dist=size)
-  cropi = crop(landcover, buffi, mask=T)
-  numCells = global(cropi, 'sum', na.rm=T)
-  forestHa = numCells * grainArea
-  propForest = forestHa / buffArea
-  
-  return(propForest)
-}
-
 
 #This is where we are going to store the output values
 for100m = as.vector(rep(NA, nrow(sites)))
@@ -302,19 +287,16 @@ forestData = sites %>%
 
 head(forestData)
 ```
-
-
 ```{r}
 
-
-
 forestData %>% 
-  as.data.frame() %>%
+  as.data.frame() %>% 
   select(for100m, for500m, for1km, for2km, for3km, for4km, for5km) %>% 
   PerformanceAnalytics::chart.Correlation(histogram=F)
 
 ```
 
+The pattern I'm seeing is that correlation between skink occupancy with forest cover increases as grain size increases. I suppose this may have due to a decrease in variance as grain size increases as demonstrated in the last couple challenges. And of course, each gain size is most closley correlated with the next one up, but this isn't really telling of much. Just looking at the points falling closer to the regression line with each increasing grain size almost makes me cautious about what's going on in terms of correlation.. is it simply being driven by decreasing variance and is this generally going to be the pattern no matter the landscape metric? I guess that's what the AIC is for teasing out.   
 
 ## Challenge 5 (4 points)
 
@@ -322,14 +304,69 @@ forestData %>%
 
 Place your R code in the chunk below.
 ```{r}
+modelNull = glm(pres~1, family='binomial', data=forestData)
+model100m = glm(pres~for100m, family='binomial', data=forestData)
+model500m = glm(pres~for500m, family='binomial', data=forestData)
+model1km = glm(pres~for1km, family='binomial', data=forestData)
+model2km = glm(pres~for2km, family='binomial', data=forestData)
+model3km = glm(pres~for3km, family='binomial', data=forestData)
+model4km = glm(pres~for4km, family='binomial', data=forestData)
+model5km = glm(pres~for5km, family='binomial', data=forestData)
+
+aictab(list(modelNull, model100m, model500m, model1km, model2km, model3km, model4km, model5km), modnames=c('Null', '100m', '500m', '1 km', '2km', '3km', '4km', '5 km'))
 
 ```
+```{r}
+effects2v4 = data.frame(model = c('2km', '4km'),
+           beta = c(summary(model2km)$coefficients[2,1], summary(model4km)$coefficients[2,1]),
+           se = c(summary(model2km)$coefficients[2,2], summary(model4km)$coefficients[2,2]))
 
-Place your answer to the questions here.
+effects2v4 = effects2v4 %>% 
+  mutate(lcl = beta - 1.96*se,
+         ucl = beta + 1.96*se)
+
+ggplot(effects2v4, aes(x=model))+
+  theme_bw()+
+  theme(panel.grid=element_blank())+
+  geom_point(aes(y=beta))+
+  geom_errorbar(aes(ymin=lcl, ymax=ucl))
+
+effects2v3 = data.frame(model = c('2km', '3km'),
+           beta = c(summary(model2km)$coefficients[2,1], summary(model3km)$coefficients[2,1]),
+           se = c(summary(model2km)$coefficients[2,2], summary(model3km)$coefficients[2,2]))
+
+effects2v3 = effects2v3 %>% 
+  mutate(lcl = beta - 1.96*se,
+         ucl = beta + 1.96*se)
+
+ggplot(effects2v3, aes(x=model))+
+  theme_bw()+
+  theme(panel.grid=element_blank())+
+  geom_point(aes(y=beta))+
+  geom_errorbar(aes(ymin=lcl, ymax=ucl))
+
+effects4v5 = data.frame(model = c('4km', '5km'),
+           beta = c(summary(model4km)$coefficients[2,1], summary(model5km)$coefficients[2,1]),
+           se = c(summary(model4km)$coefficients[2,2], summary(model5km)$coefficients[2,2]))
+
+effects4v5 = effects4v5 %>% 
+  mutate(lcl = beta - 1.96*se,
+         ucl = beta + 1.96*se)
+
+ggplot(effects4v5, aes(x=model))+
+  theme_bw()+
+  theme(panel.grid=element_blank())+
+  geom_point(aes(y=beta))+
+  geom_errorbar(aes(ymin=lcl, ymax=ucl))
+```
+
+
+Based on AIC scores, 2km is the scale of effect, which is good because we don't have to necessarily go above and below to test for the full range (theoretically). However, the difference between delta AIC and AIC scores for 2km and 4km are quite small which makes me wonder how much better 2km really is. In fact, there's not huge jump between 3 & 4, and 4 & 5, either. I think an increase of 2 is usually soley attributable to an additional parameter, but these aren't multivariable models...So I'm not too sure of the interpretation there. I guess I'll try the code for covariate comparison. Ok, there's not much a difference between betas for any of these. 2 is definitely the sweet spot, but there's not much of a difference.  
+
 
 ## Challenge 6 (2 points)
 
 **If you encounter ambiguity in identifying the characteristic scale of an effect, can you come up with a clever way to condense the information in the multi-scale variables into just one or two? When might it be ok to include two covariates in the same model (think multiple regression) that represent the same ecological feature measured at different scales (e.g., forest cover at 1 km AND forest cover at 5 km in the same model)? I can think of both a biological and a statistical answer to this question.**
 
-Place your answer to the questions here.
+Well, Todd's voice is ringing in my ear that we should throw all the models of various scales into a global model and do something along the lines of step-wise methods?...I'm not solid on the different versions of model testing anymore, but the idea being that you take out statistically non-significant variables until you only have the ones that contribute the most to the fit of the model, then you run AIC for different iterations of those models and identify the key scale that way. Then again, he's also telling me to do an F drop test between those final 2 models to see which one doesn't add any more explanation to the fit of the data to the model and select the former. I suppose a biological reason to test for this could be related to 2 different mechanisms at play, maybe one based on daily movements or territory size for communities at smaller grains, and the other being related to colonization and migration for populations at larger ones. 
 
