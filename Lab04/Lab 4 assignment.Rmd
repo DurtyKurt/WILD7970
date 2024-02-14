@@ -128,11 +128,17 @@ patchPerim
 patchShape = lsm_p_shape(forest, directions = 8)
 patchShape
 
+tmp = rbind(patchShape, patchPerim, patchPara) %>% 
+  pivot_wider(names_from=metric, values_from=value) %>% 
+  select(shape:para)
+
+PerformanceAnalytics::chart.Correlation(tmp, histogram=F)
+
 # Chart correlation matrix
 #This is where we are going to store the output values
-forestData %>% 
+IDK how to get these into a dataframe. %>% 
   as.data.frame() %>% 
-  select(for100m, for500m, for1km, for2km, for3km, for4km, for5km) %>% 
+  select(patchArea, patchCAI, patchCore, patchCircle, patchCont, patchEnn, patchFDI, patchGyrate, patchNcore, patchPara, patchPerim, patchShape) %>% 
   PerformanceAnalytics::chart.Correlation(histogram=F)
 ```
 
@@ -145,19 +151,30 @@ Answer Challenge 1 with your written text here.
 **In our lab, we used the 8-direction or "queen" rule to delineate patches. Using the nlcdSimple raster we created, explore the differences in patch characteristics if you were to use the 4-direction or "rook" rule for delineating patches. Calculate the following class-level metrics for forest cover for both the queen and rook patch delineation rules: number of patches, mean patch size, standard deviation in patch size, nearest-neighbor distance, and total edge length. What patterns do you notice? When might it be appropriate to use one rule vs. the other?**
 
 ```{r}
-classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6),
-                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+classMnPatch8 = lsm_c_area_mn(forest, directions=8)
+classMnPatch8
+classMnPatch4 = lsm_c_area_mn(forest, directions=4) 
+classMnPatch4
+classSdPatch8 = lsm_c_area_sd(forest, directions=8) 
+classSdPatch8
+classSdPatch4 = lsm_c_area_sd(forest, directions=4) 
+classSdPatch4
+classTePatch8 = lsm_c_te(forest, count_boundary = TRUE, directions=8) 
+classTePatch8
+classTePatch4 = lsm_c_te(forest, count_boundary = TRUE, directions=4) 
+classTePatch4
+classEnnPatch8 = lsm_c_enn_mn(forest, directions=8) 
+classEnnPatch8
+classEnnPatch4 = lsm_c_enn_mn(forest, directions=4) 
+classEnnPatch4
+classNumPatch8 = lsm_c_np(forest, directions=8) 
+classNumPatch8
+classNumPatch4 = lsm_c_np(forest, directions=4) 
+classNumPatch4
 
-
-
-lsm_c_area_mn(nlcdSimple, directions=8) %>% 
-  left_join(classCats, by='class')
-
-lsm_c_area_sd(nlcdSimple, directions=8) %>% 
-  left_join(classCats, by='class')
 ```
 
-Answer Challenge 2 with your written text here.
+All metrics are markedly higher in the queens case, other than number of patches. I suspect total edge would be higher in the queens case as well, but it keeps showing no change... Using one rule over the other should be based on the context of the situation. This could be based on what the species in question is and it's dispersion abilities, as well as the resolution of the grains to determine what a suitable corridor would be for that species. When working with small grain sizes that should a narrow sub patch between slope wetland patches, it's likely that this is just a densely vegetated ditch with a narrow riparian buffer. I'd expect amphibians to utilize the channels for dispersion, but not a bear.
 
 
 ## Challenge 3 (4 points)
@@ -166,26 +183,114 @@ Answer Challenge 2 with your written text here.
 **Using the same zoomed-in study area that we used in the lab, download NLCD raster data for the years 2001 and 2019 and simplify these rasters into 6 landcover categories (wet, developed, barren, forest, grassland, and agriculture). Plot these two rasters. What are some of the initial changes you notice between 2001 and 2019?**
 
 ```{r}
-# Place your R code here.
+studyArea = st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week4/studyArea.shp')
+nlcd2001 = get_nlcd(studyArea, label='AlLandscape', year=2001)
+
+# values(nlcd) = as.character(values(nlcd))
+
+nlcdSimple2001 = nlcd2001
+nlcdSimple2001[nlcdSimple2001==11] = 1 #Wet areas are a 1 now
+nlcdSimple2001[nlcdSimple2001 %in% c(21, 22, 23, 24)] = 2 #All developed areas are 2
+nlcdSimple2001[nlcdSimple2001 %in% c(31, 52)] = 3 #Barren land and shrub/scrub are 3
+nlcdSimple2001[nlcdSimple2001 %in% c(41,42,43)] = 4 #All forest types are 4
+nlcdSimple2001[nlcdSimple2001 == 71] = 5 #Grassland is 5
+nlcdSimple2001[nlcdSimple2001 %in% c(81,82)] = 6 #And agriculture is 6
+
+#Give these numbers category names
+tmp = data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcdSimple2001 = categories(nlcdSimple2001, value=tmp)
+
+#And plot the new raster
+ggplot(nlcdSimple2001, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+  scale_fill_manual(values=c('blue', 'black', 'gray', 'darkolivegreen', 'orange', 'yellow'))
+
+nlcd2019 = get_nlcd(studyArea, label='AlLandscape', year=2019)
+
+# values(nlcd) = as.character(values(nlcd))
+
+nlcdSimple2019 = nlcd2019
+nlcdSimple2019[nlcdSimple2019==11] = 1 #Wet areas are a 1 now
+nlcdSimple2019[nlcdSimple2019 %in% c(21, 22, 23, 24)] = 2 #All developed areas are 2
+nlcdSimple2019[nlcdSimple2019 %in% c(31, 52)] = 3 #Barren land and shrub/scrub are 3
+nlcdSimple2019[nlcdSimple2019 %in% c(41,42,43)] = 4 #All forest types are 4
+nlcdSimple2019[nlcdSimple2019 == 71] = 5 #Grassland is 5
+nlcdSimple2019[nlcdSimple2019 %in% c(81,82)] = 6 #And agriculture is 6
+
+#Give these numbers category names
+tmp = data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcdSimple2019 = categories(nlcdSimple2019, value=tmp)
+
+#And plot the new raster
+ggplot(nlcdSimple2019, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+  scale_fill_manual(values=c('blue', 'black', 'gray', 'darkolivegreen', 'orange', 'yellow'))
+
+
+res(nlcdSimple2001)
+ext(nlcdSimple2001)
+levels(nlcdSimple2001)
+res(nlcdSimple2019)
+ext(nlcdSimple2019)
+levels(nlcdSimple2019)
+
 ```
 
-Place your text here.
+The main trend is agriculture expanding into previously forested land. I suspect that just like how the power line trail of early succession habitat was classified as agriculture rather than grassland, the same is likely true of the grassland patches and these are actually ag as well. There's a lot more barren land around these grassland patches though, so this could be recently harvest forests where development is occurring around in phases. 
 
 **Quantify this at the class level by calculating and reporting the changes in (1) the total amount of each land cover type (2) mean patch size for each land cover type, and (3) mean nearest neighbor distance for each cover type between the years 2011 and 2019. Give a short description of how you interpret the changes in these values.**
 
 ```{r}
-# Place your R code here.
+classMnPatch2001 = lsm_c_area_mn(nlcdSimple2001, directions=8)  
+
+classMnPatch2001
+
+classMnPatch2019 = lsm_c_area_mn(nlcdSimple2019, directions=8) 
+
+classMnPatch2019
+
+classEnnPatch2001 = lsm_c_enn_mn(nlcdSimple2001, directions=8) 
+
+classEnnPatch2001
+
+classEnnPatch2019 = lsm_c_enn_mn(nlcdSimple2019, directions=8) 
+
+classEnnPatch2019
+
+classArea2001 = lsm_c_ca(nlcdSimple2001, directions = 8) 
+
+classArea2001
+
+classArea2019 = lsm_c_ca(nlcdSimple2019, directions = 8) 
+
+classArea2019
 ```
 
-Place your text here.
+mean patch size area 2001-2019:
+Wetland = 0, developed = 0.18, open = 2.53363, forest = -31.16128, grassland = 1.766824, ag = 4.780793 
+mean nearest neighbor:
+wetland = 0, developed = -6.41816, open = -197.8003, forest = -4.26063, grassland = -64.44042, ag = -3.11571
+total area:
+wetland = 0, developed = 1.35, open = 159.39, forest = -413.46, grassland = 125.64, ag = 127.08
+
 
 **Quantify these changes at the landscape level by calculating and reporting on changes in the (1) Shannon diversity and (2) Shannon evenness of the landscapes at the different time points. Give a short description of how you interpret the changes in these values.**
 
 ```{r}
-# Place your R code here.
+ShanDI2001 = lsm_l_shdi(nlcdSimple2001)
+ShanDI2019 = lsm_l_shdi(nlcdSimple2019)
+ShanDI2001
+ShanDI2019
+
+ShanEI2001 = lsm_l_shei(nlcdSimple2001)
+ShanEI2019 = lsm_l_shei(nlcdSimple2019)
+ShanEI2001
+ShanEI2019
 ```
 
-Place your text here.
+Diversity Index values increased between 2001-2019, indicating the diversity was lowered. No land cover types went away completely, so I think this was influenced by a change in abundance for each cover type. Evenness values also increased in these years from 0.53 to 0.75, which I believe means that areas of different groups became more evenly represented so that total area on a class basis is closer to an even distribution now.  
 
 
 
@@ -196,19 +301,134 @@ Place your text here.
 ```{r}
 set.seed(23)
 
-# Place your R code here.
+vossModel = voss2d(g=7, H=0.5)
+vossModel = rast(vossModel$z)
 
+plot(vossModel)
+
+# 10% cover
+threshold10 = quantile(as.matrix(vossModel), prob=0.1)
+voss10 = ifel(vossModel > threshold10, 0, 1)
+plot(voss10)
+
+# 20% cover
+threshold20 = quantile(as.matrix(vossModel), prob=0.2)
+voss20 = ifel(vossModel > threshold20, 0, 1)
+plot(voss20)
+
+# 30% cover
+threshold30 = quantile(as.matrix(vossModel), prob=0.3)
+voss30 = ifel(vossModel > threshold30, 0, 1)
+plot(voss30)
+
+# 40% cover
+threshold40 = quantile(as.matrix(vossModel), prob=0.4)
+voss40 = ifel(vossModel > threshold40, 0, 1)
+plot(voss40)
+
+# 50% cover
+threshold50 = quantile(as.matrix(vossModel), prob=0.5)
+voss50 = ifel(vossModel > threshold50, 0, 1)
+plot(voss50)
+
+# 60% cover
+threshold60 = quantile(as.matrix(vossModel), prob=0.6)
+voss60 = ifel(vossModel > threshold60, 0, 1)
+plot(voss60)
+
+# 70% cover
+threshold70 = quantile(as.matrix(vossModel), prob=0.7)
+voss70 = ifel(vossModel > threshold70, 0, 1)
+plot(voss70)
+
+# 80% cover
+threshold80 = quantile(as.matrix(vossModel), prob=0.8)
+voss80 = ifel(vossModel > threshold80, 0, 1)
+plot(voss80)
+
+# 90% cover
+threshold90 = quantile(as.matrix(vossModel), prob=0.9)
+voss90 = ifel(vossModel > threshold90, 0, 1)
+plot(voss90)
 ```
 
-Place your text here.
+The pattern I see is that aggregation is happening near the edges and fills into the center last. Where converging masses of 'land cover' occur, each threshold increase fills into the spaces between them and convergence just becomes more of a thing. It's not like new values are popping up in the center away from everything.
 
 **Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is threshold value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
 
 ```{r}
-# Place your R code here.
+
+vossTe10 = lsm_c_te(voss10, count_boundary = TRUE, directions=8) 
+vossTe10
+vossTe20 = lsm_c_te(voss20, count_boundary = TRUE, directions=8) 
+vossTe20
+vossTe30 = lsm_c_te(voss30, count_boundary = TRUE, directions=8) 
+vossTe30
+vossTe40 = lsm_c_te(voss40, count_boundary = TRUE, directions=8) 
+vossTe40
+vossTe50 = lsm_c_te(voss50, count_boundary = TRUE, directions=8) 
+vossTe50
+vossTe60 = lsm_c_te(voss60, count_boundary = TRUE, directions=8) 
+vossTe60
+vossTe70 = lsm_c_te(voss70, count_boundary = TRUE, directions=8) 
+vossTe70
+vossTe80 = lsm_c_te(voss80, count_boundary = TRUE, directions=8) 
+vossTe80
+vossTe90 = lsm_c_te(voss90, count_boundary = TRUE, directions=8) 
+vossTe90
+yTe <-c(1706, 2056, 2796, 3554, 3644, 3254, 2938, 2550, 1966)
+xThresh <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+Te_vs_Thresh = plot(x= xThresh, y=yTe)
+Te_vs_Thresh
+
+vossEnn_mn_10 = lsm_c_enn_mn(voss10, directions=8)
+vossEnn_mn_10
+vossEnn_mn_20 = lsm_c_enn_mn(voss20, directions=8)
+vossEnn_mn_20
+vossEnn_mn_30 = lsm_c_enn_mn(voss30, directions=8)
+vossEnn_mn_30
+vossEnn_mn_40 = lsm_c_enn_mn(voss40, directions=8)
+vossEnn_mn_40
+vossEnn_mn_50 = lsm_c_enn_mn(voss50, directions=8)
+vossEnn_mn_50
+vossEnn_mn_60 = lsm_c_enn_mn(voss60, directions=8)
+vossEnn_mn_60
+vossEnn_mn_70 = lsm_c_enn_mn(voss70, directions=8)
+vossEnn_mn_70
+vossEnn_mn_80 = lsm_c_enn_mn(voss80, directions=8)
+vossEnn_mn_80
+vossEnn_mn_90 = lsm_c_enn_mn(voss90, directions=8)
+vossEnn_mn_90
+yEnn_mn <-c(3.199507, 3.637775, 2.939403, 2.540016, 2.535572, 2.687083, 2.663815, 2.413240, 2.244642)
+xThresh <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+Enn_mn_vs_Thresh = plot(x= xThresh, y=yEnn_mn)
+Enn_mn_vs_Thresh
+
+voss_ED_10 = lsm_l_ed(voss10, directions = 8)
+voss_ED_10
+voss_ED_20 = lsm_l_ed(voss20, directions = 8)
+voss_ED_20
+voss_ED_30 = lsm_l_ed(voss30, directions = 8)
+voss_ED_30
+voss_ED_40 = lsm_l_ed(voss40, directions = 8)
+voss_ED_40
+voss_ED_50 = lsm_l_ed(voss50, directions = 8)
+voss_ED_50
+voss_ED_60 = lsm_l_ed(voss60, directions = 8)
+voss_ED_60
+voss_ED_70 = lsm_l_ed(voss70, directions = 8)
+voss_ED_70
+voss_ED_80 = lsm_l_ed(voss80, directions = 8)
+voss_ED_80
+voss_ED_90 = lsm_l_ed(voss90, directions = 8)
+voss_ED_90
+yED <-c(953.6686, 1127.937, 1540.773, 1961.421, 1990.866, 1735.473, 1524.548, 1269.755, 900.7872)
+xThresh <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+Enn_ED_vs_Thresh = plot(x= xThresh, y=yED)
+Enn_ED_vs_Thresh
 ```
 
-Place your text here.
+I first chose Total edge, because I was curious what the pattern would look like exactly. I expected it to go up and down because core would over take edge as cores grew. Normal distribution, No surprise here. The pattern I observed for distance to nearest neighbor was a little more oscillating between small changes in x, but overall had a negative relationship with increasing thresholds. This one I chose because I expected the negative relationship as patches got bigger, but really expected something more like a logistic looking regression. From the landscape level, I chose edge density for the same reasons as total edge, but for the sake of seeing how area would influence this metric. It appears to have an almost normal distribution when plotted with threshold, though there's more of a quick rise and slow fall in terms of effect, so sort of right skewed. This adds up, since more area means more edge before patches converge on the rising limb, and area values get larger and edge values get smaller after convergence, on the falling limb.
 
 ## Challenge 5 (4 points)
 
@@ -217,17 +437,149 @@ Place your text here.
 ```{r}
 set.seed(23)
 
-# Place your R code here.
+vossModelH01 = voss2d(g=7, H=0.1)
+vossModelH01 = rast(vossModelH01$z)
+vossModelH02 = voss2d(g=7, H=0.2)
+vossModelH02 = rast(vossModelH02$z)
+vossModelH03 = voss2d(g=7, H=0.3)
+vossModelH03 = rast(vossModelH03$z)
+vossModelH04 = voss2d(g=7, H=0.4)
+vossModelH04 = rast(vossModelH04$z)
+vossModelH05 = voss2d(g=7, H=0.5)
+vossModelH05 = rast(vossModelH05$z)
+vossModelH06 = voss2d(g=7, H=0.6)
+vossModelH06 = rast(vossModelH06$z)
+vossModelH07 = voss2d(g=7, H=0.7)
+vossModelH07 = rast(vossModelH07$z)
+vossModelH08 = voss2d(g=7, H=0.8)
+vossModelH08 = rast(vossModelH08$z)
+vossModelH09 = voss2d(g=7, H=0.9)
+vossModelH09 = rast(vossModelH09$z)
+
+plot(vossModelH01)
+plot(vossModelH02)
+plot(vossModelH03)
+plot(vossModelH04)
+plot(vossModelH05)
+plot(vossModelH06)
+plot(vossModelH07)
+plot(vossModelH08)
+plot(vossModelH09)
+
+
+H01threshold30 = quantile(as.matrix(vossModelH01), prob=0.3)
+H01 = ifel(vossModelH01 > H01threshold30, 0, 1)
+plot(H01)
+
+H02threshold30 = quantile(as.matrix(vossModelH02), prob=0.3)
+H02 = ifel(vossModelH02 > H02threshold30, 0, 1)
+plot(H02)
+
+H03threshold30 = quantile(as.matrix(vossModelH03), prob=0.3)
+H03 = ifel(vossModelH03 > H03threshold30, 0, 1)
+plot(H03)
+
+H04threshold30 = quantile(as.matrix(vossModelH04), prob=0.3)
+H04 = ifel(vossModelH04 > H04threshold30, 0, 1)
+plot(H04)
+
+H05threshold30 = quantile(as.matrix(vossModelH05), prob=0.3)
+H05 = ifel(vossModelH05 > H05threshold30, 0, 1)
+plot(H05)
+
+H06threshold30 = quantile(as.matrix(vossModelH06), prob=0.3)
+H06 = ifel(vossModelH06 > H06threshold30, 0, 1)
+plot(H06)
+
+H07threshold30 = quantile(as.matrix(vossModelH07), prob=0.3)
+H07 = ifel(vossModelH07 > H07threshold30, 0, 1)
+plot(H07)
+
+H08threshold30 = quantile(as.matrix(vossModelH08), prob=0.3)
+H08 = ifel(vossModelH08 > H08threshold30, 0, 1)
+plot(H08)
+
+H09threshold30 = quantile(as.matrix(vossModelH09), prob=0.3)
+H09 = ifel(vossModelH09 > H09threshold30, 0, 1)
+plot(H09)
 
 ```
 
-Place your text here.
+Basically, land cover just becomes more spatially aggregated as H increases.
 
 **Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. THESE MUST BE DIFFERENT THAN THOSE METRICS YOU USED IN CHALLENGE 2. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is H-value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
 
 ```{r}
-# Place your R code here.
+
+H01_np = lsm_l_np(H01, directions=8) 
+H01_np
+H02_np = lsm_l_np(H02, directions=8) 
+H02_np
+H03_np = lsm_l_np(H03, directions=8) 
+H03_np
+H04_np = lsm_l_np(H04, directions=8) 
+H04_np
+H05_np = lsm_l_np(H05, directions=8) 
+H05_np
+H06_np = lsm_l_np(H06, directions=8) 
+H06_np
+H07_np = lsm_l_np(H07, directions=8) 
+H07_np
+H08_np = lsm_l_np(H08, directions=8) 
+H08_np
+H09_np = lsm_l_np(H09, directions=8) 
+H09_np
+yNP <-c(370, 262, 147, 186, 150, 123, 38, 31, 25)
+xH <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+NP_vs_H = plot(x= xH, y=yNP)
+NP_vs_H
+
+H01_circ = lsm_l_circle_mn(H01, directions = 8)
+H01_circ
+H02_circ = lsm_l_circle_mn(H02, directions = 8)
+H02_circ
+H03_circ = lsm_l_circle_mn(H03, directions = 8)
+H03_circ
+H04_circ = lsm_l_circle_mn(H04, directions = 8)
+H04_circ
+H05_circ = lsm_l_circle_mn(H05, directions = 8)
+H05_circ
+H06_circ = lsm_l_circle_mn(H06, directions = 8)
+H06_circ
+H07_circ = lsm_l_circle_mn(H07, directions = 8)
+H07_circ
+H08_circ = lsm_l_circle_mn(H08, directions = 8)
+H08_circ
+H09_circ = lsm_l_circle_mn(H09, directions = 8)
+H09_circ
+yCirc <-c(0.4842729, 0.4720764, 0.4661469, 0.4813961, 0.4650786, 0.4581993, 0.46638, 0.4738502, 0.5126833)
+xH <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+Circ_vs_H = plot(x= xH, y=yCirc)
+Circ_vs_H
+
+H01_frac = lsm_c_frac_mn(H01, directions = 8)
+H01_frac
+H02_frac = lsm_c_frac_mn(H02, directions = 8)
+H02_frac
+H03_frac = lsm_c_frac_mn(H03, directions = 8)
+H03_frac
+H04_frac = lsm_c_frac_mn(H04, directions = 8)
+H04_frac
+H05_frac = lsm_c_frac_mn(H05, directions = 8)
+H05_frac
+H06_frac = lsm_c_frac_mn(H06, directions = 8)
+H06_frac
+H07_frac = lsm_c_frac_mn(H07, directions = 8)
+H07_frac
+H08_frac = lsm_c_frac_mn(H08, directions = 8)
+H08_frac
+H09_frac = lsm_c_frac_mn(H09, directions = 8)
+H09_frac
+yfrac <-c(1.230115, 1.230203, 1.183577, 1.198105, 1.198105, 1.163642, 1.081681, 1.104732, 1.256054)
+xH <-c(10, 20, 30, 40, 50, 60, 70, 80, 90)
+frac_vs_H = plot(x= xH, y=yfrac)
+frac_vs_H
 ```
 
-Place your text here.
+Number of patches had a similar pattern to nearest neighbor distance in the last example, which was a little surprising. I was expecting something more linear, and other than chance, I'm not sure why this is the case. Related circumscribing circle (mean) surprised me, as it didn't really have any kind of relationship with H. With area being consistent between all models, I thought this one would capture changes in shape pretty well. Something else going on that I'm not picking up on, I think. Tried this with mean fractional dimension index and got similar results as well. I had similar expectations as those I had with circumscribing circle where I thought with area controlled for, shape would have some linear relationship with H which seems to aggregate land cover as values rise. I'm not sure what I'm missing here or if I'm overlooking some part of the math each function uses.
 
