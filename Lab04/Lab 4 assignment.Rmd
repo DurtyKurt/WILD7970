@@ -128,22 +128,16 @@ patchPerim
 patchShape = lsm_p_shape(forest, directions = 8)
 patchShape
 
-tmp = rbind(patchShape, patchPerim, patchPara) %>% 
+tmp = rbind(patchArea, patchCAI, patchCore, patchCircle, patchCont, patchEnn, patchFDI, patchGyrate, patchNcore, patchPara, patchPerim, patchShape) %>% 
   pivot_wider(names_from=metric, values_from=value) %>% 
-  select(shape:para)
+  select(area:cai:core:circle:contig:enn:frac:gyrate:ncore:para:perim:shape)
 
 PerformanceAnalytics::chart.Correlation(tmp, histogram=F)
 
-# Chart correlation matrix
-#This is where we are going to store the output values
-IDK how to get these into a dataframe. %>% 
-  as.data.frame() %>% 
-  select(patchArea, patchCAI, patchCore, patchCircle, patchCont, patchEnn, patchFDI, patchGyrate, patchNcore, patchPara, patchPerim, patchShape) %>% 
-  PerformanceAnalytics::chart.Correlation(histogram=F)
 ```
 
 
-Answer Challenge 1 with your written text here.
+Some metrics highly correlated with each other include area & core, contig & param, frac & shape, and gyrate & perim. The first thing I immediately checked was the type of metric for each pair of highly correlated metrics, which were all the same within their respective pairs. For instance, are & core are both 'area' metrics, and frac and shape are both 'shape' metrics. I think this is the heart of the pattern, that each metric is really getting at the same thing within it's shape, area, shape and edge, etc., types. The least correlated variables were not the same kinds of metrics, so they were measuring other variables rather than the same one's measured in slightly different ways.
 
 
 ## Challenge 2 (4 points)
