@@ -139,6 +139,8 @@ PerformanceAnalytics::chart.Correlation(tmp, histogram=F)
 
 Some metrics highly correlated with each other include area & core, contig & param, frac & shape, and gyrate & perim. The first thing I immediately checked was the type of metric for each pair of highly correlated metrics, which were all the same within their respective pairs. For instance, are & core are both 'area' metrics, and frac and shape are both 'shape' metrics. I think this is the heart of the pattern, that each metric is really getting at the same thing within it's shape, area, shape and edge, etc., types. The least correlated variables were not the same kinds of metrics, so they were measuring other variables rather than the same one's measured in slightly different ways.
 
+$\color{red}{\text{Nice! +4}}$
+
 
 ## Challenge 2 (4 points)
 
@@ -169,6 +171,8 @@ classNumPatch4
 ```
 
 All metrics are markedly higher in the queens case, other than number of patches. I suspect total edge would be higher in the queens case as well, but it keeps showing no change... Using one rule over the other should be based on the context of the situation. This could be based on what the species in question is and it's dispersion abilities, as well as the resolution of the grains to determine what a suitable corridor would be for that species. When working with small grain sizes that should a narrow sub patch between slope wetland patches, it's likely that this is just a densely vegetated ditch with a narrow riparian buffer. I'd expect amphibians to utilize the channels for dispersion, but not a bear.
+
+$\color{red}{\text{Good. +4}}$
 
 
 ## Challenge 3 (4 points)
@@ -286,7 +290,7 @@ ShanEI2019
 
 Diversity Index values increased between 2001-2019, indicating the diversity was lowered. No land cover types went away completely, so I think this was influenced by a change in abundance for each cover type. Evenness values also increased in these years from 0.53 to 0.75, which I believe means that areas of different groups became more evenly represented so that total area on a class basis is closer to an even distribution now.  
 
-
+$\color{red}{\text{You lost a point for not providing a short description of how you interpret the changes in the amount/patch size/nearest neighbor values above, and because you interpreted Shannon diversity incorrectly (the increase indicates greater diversity). Good verall though. +3}}$
 
 ## Challenge 4 (4 points)
 
@@ -423,6 +427,8 @@ Enn_ED_vs_Thresh
 ```
 
 I first chose Total edge, because I was curious what the pattern would look like exactly. I expected it to go up and down because core would over take edge as cores grew. Normal distribution, No surprise here. The pattern I observed for distance to nearest neighbor was a little more oscillating between small changes in x, but overall had a negative relationship with increasing thresholds. This one I chose because I expected the negative relationship as patches got bigger, but really expected something more like a logistic looking regression. From the landscape level, I chose edge density for the same reasons as total edge, but for the sake of seeing how area would influence this metric. It appears to have an almost normal distribution when plotted with threshold, though there's more of a quick rise and slow fall in terms of effect, so sort of right skewed. This adds up, since more area means more edge before patches converge on the rising limb, and area values get larger and edge values get smaller after convergence, on the falling limb.
+
+$\color{red}{\text{Great! +4}}$
 
 ## Challenge 5 (4 points)
 
@@ -577,3 +583,4 @@ frac_vs_H
 
 Number of patches had a similar pattern to nearest neighbor distance in the last example, which was a little surprising. I was expecting something more linear, and other than chance, I'm not sure why this is the case. Related circumscribing circle (mean) surprised me, as it didn't really have any kind of relationship with H. With area being consistent between all models, I thought this one would capture changes in shape pretty well. Something else going on that I'm not picking up on, I think. Tried this with mean fractional dimension index and got similar results as well. I had similar expectations as those I had with circumscribing circle where I thought with area controlled for, shape would have some linear relationship with H which seems to aggregate land cover as values rise. I'm not sure what I'm missing here or if I'm overlooking some part of the math each function uses.
 
+$\color{red}{\text{I'd have to look closer at these particular functions, but overall good job of exploration and thinking about the results. +4}}$
