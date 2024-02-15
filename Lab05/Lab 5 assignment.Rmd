@@ -26,12 +26,14 @@ set.seed(144)
 
 
 pppWindow = owin(xrange = c(0, 100), yrange = c(0, 100))
-pppSpecies = ppp(x = runif(100), y = runif(100))
-pppCactus = ppp(x=cactus$East, y=cactus$North, window = pppWindow)
+# pppSpecies = ppp(x = runif(100), y = runif(100))
+# pppCactus = ppp(x=cactus$East, y=cactus$North, window = pppWindow)
 
 
-simPp = rpoispp(lambda = intensity(pppSpecies), nsim=4, win=pppWindow)
+simPp = rpoispp(lambda = 0.01, nsim=1, win=pppWindow)
 plot(simPp)
+
+simPp$n #Number of points
 ```
 
 112 organisms, which is 1.12% of the total cells. This is based on the mean and variance of 0.01 from a poison distribution, representing occurrences of 1% of the data sets extent, so this exactly what I would expect.
