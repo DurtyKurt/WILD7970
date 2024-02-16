@@ -102,8 +102,7 @@ plot(Critter2MC, .-r~r, legend=F)
 
 tmp = rbind(critter1, critter2)
 
-both = ppp(tmp$x, tmp$y, window = predPreyWin, mark=tmp$org)
-
+both = ppp(tmp$x, tmp$y, window = predPreyWin, marks=as.factor(tmp$org))
 
 Critter1MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='critter1', j='critter2', simulate = expression(rlabel(both)))
 plot(Critter1MultiL, .-r~r, legend=F)
