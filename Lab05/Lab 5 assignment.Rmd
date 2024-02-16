@@ -34,23 +34,25 @@ simPp = rpoispp(lambda = 0.01, nsim=1, win=pppWindow)
 plot(simPp)
 
 simPp$n #Number of points
+plot(density(simPp, 1)) #density/intensity plot
+summary(simPp)
 ```
 
-112 organisms, which is 1.12% of the total cells. This is based on the mean and variance of 0.01 from a poison distribution, representing occurrences of 1% of the data sets extent, so this exactly what I would expect.
+I think lambda relates to intensity here, so theoretically the model should have 100 organisms since there are 10,000 total units in the window and lambda was set to 1%. 83 is pretty close so I think this is very close to what should be expected. 
 
 # Challenge 2 (3 points)
 
 Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
 
 ```{r}
-q = quadratcount(SimWin, nx=4, ny=4)
-plot(SimWin)
+q = quadratcount(simPp, nx=4, ny=4)
+plot(simPp)
 plot(q, add=T)
 
-quadrat.test(SimWin, nx=4, ny=4, method='Chisq')
+quadrat.test(simPp, nx=4, ny=4, method='Chisq')
 ```
 
-Place your answer to Challenge 2 here.
+There doesn't appear to be any patterns in this data, which produced a chi-square p value of 0.2332. Looking at the data and values for each quadrant, I think points are 'homogeneously distributed' and fit into this CRS idea.
 
 # Challenge 3 (14 points)
 
@@ -58,7 +60,7 @@ I have simulated the distributions of 2 critters and provided their x-y coordina
 
 
 ```{r}
-#Use this code chunk to get you started.
+#Inidvidual datasets comparison
 
 predPreyWin = owin(xrange = c(0, 100), yrange = c(0, 100))
 
@@ -67,6 +69,47 @@ critter1 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/
 
 critter2 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week5/species2.csv') %>% 
   mutate(org = 'critter2')
+
+plot(critter1)
+plot(critter2)
+Critter1 = ppp(x=critter1$x, y=critter1$y, window = predPreyWin)
+Critter2 = ppp(x=critter2$x, y=critter2$y, window = predPreyWin)
+
+plot(Critter1)
+plot(density(Critter1, 1))
+plot(Critter2)
+plot(density(Critter2, 1))
+
+summary(Critter1)
+summary(Critter2)
+
+q1 = quadratcount(Critter1, nx=4, ny=4)
+plot(Critter1)
+plot(q1, add=T)
+q2 = quadratcount(Critter2, nx=4, ny=4)
+plot(Critter2)
+plot(q2, add=T)
+
+quadrat.test(Critter1, nx=4, ny=4, method='Chisq')
+quadrat.test(Critter2, nx=4, ny=4, method='Chisq')
+
+Critter1MC = envelope(Critter1, Lest, nsim=99, rank=1, i='Critter2', global=F)
+Critter2MC = envelope(Critter2, Lest, nsim=99, rank=1, i='Critter1', global=F)
+plot(Critter1MC, .-r~r, legend=F)
+plot(Critter2MC, .-r~r, legend=F)
+
+### Combined Datasets
+
+tmp = rbind(critter1, critter2)
+
+both = ppp(tmp$x, tmp$y, window = predPreyWin, mark=tmp$org)
+
+
+Critter1MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='critter1', j='critter2', simulate = expression(rlabel(both)))
+plot(Critter1MultiL, .-r~r, legend=F)
+
+Critter2MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='Critter2', j='Critter1', simulate = expression(rlabel(both)))
+plot(Critter2MultiL, .-r~r, legend=F)
 
 
 ```
