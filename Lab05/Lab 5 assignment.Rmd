@@ -113,4 +113,4 @@ plot(Critter2MultiL, .-r~r, legend=F)
 
 ```
 
-Integrate your answer with additional code chunks here.
+There is a considerable gap between the values of 3 and 18, where critter 2 seems to be avoiding critter 1. I believe the relationship of the line relative to the envelope is that there are points of aggregation for critter 2 that are happening at a consistent distance from critter 1. Given that there is only x,y data for these critters, I would only use this data too suggest that their may be a relationship between critter 1 and critter 2's distributions on the landscape. Other kinds of data like vegetation type, elevation, etc. could better explain underlying drivers of distribution with imhomogenous point processes.
