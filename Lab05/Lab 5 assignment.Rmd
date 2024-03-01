@@ -40,6 +40,8 @@ summary(simPp)
 
 I think lambda relates to intensity here, so theoretically the model should have 100 organisms since there are 10,000 total units in the window and lambda was set to 1%. 83 is pretty close so I think this is very close to what should be expected. 
 
+$\color{red}{\text{Correct. +3}}$
+
 # Challenge 2 (3 points)
 
 Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
@@ -53,6 +55,22 @@ quadrat.test(simPp, nx=4, ny=4, method='Chisq')
 ```
 
 There doesn't appear to be any patterns in this data, which produced a chi-square p value of 0.2332. Looking at the data and values for each quadrant, I think points are 'homogeneously distributed' and fit into this CRS idea.
+
+$\color{red}{\text{You used the wrong tool here. I wanted you to test this by comparing models that statistically test for linear and quadratic trends. See the code below. +1}}$
+
+```{r}
+null = ppm(simPp, ~1)
+
+linear = ppm(simPp, ~ x + y)
+#plot(Linear)
+
+quadratic = ppm(simPp, ~polynom (x, y, 2))
+#plot(Quadratic)
+
+data.frame(model = c('null', 'linear', 'quadratic'),
+           AIC = c(AIC(null), AIC(linear), AIC(quadratic)))
+```
+
 
 # Challenge 3 (14 points)
 
@@ -107,10 +125,13 @@ both = ppp(tmp$x, tmp$y, window = predPreyWin, marks=as.factor(tmp$org))
 Critter1MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='critter1', j='critter2', simulate = expression(rlabel(both)))
 plot(Critter1MultiL, .-r~r, legend=F)
 
-Critter2MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='Critter2', j='Critter1', simulate = expression(rlabel(both)))
+Critter2MultiL = envelope(both, Lcross, nsim=99, rank=1, global=F, i='critter2', j='critter1', simulate = expression(rlabel(both)))
 plot(Critter2MultiL, .-r~r, legend=F)
 
 
 ```
 
 There is a considerable gap between the values of 3 and 18, where critter 2 seems to be avoiding critter 1. I believe the relationship of the line relative to the envelope is that there are points of aggregation for critter 2 that are happening at a consistent distance from critter 1. Given that there is only x,y data for these critters, I would only use this data too suggest that their may be a relationship between critter 1 and critter 2's distributions on the landscape. Other kinds of data like vegetation type, elevation, etc. could better explain underlying drivers of distribution with imhomogenous point processes.
+
+$\color{red}{\text{You've done all of the work here, Kurtis, but your explanation could be a bit more thorough. You've done a chi-square test to evaluate evidence for clumping in the two critters, but didn't comment on that. You have multiple lines of evidence suggesting one species is clumped while the other is not. You also have evidence for repulsion between the two species. And you didn't give me an answer to which species you thought was the predator and which was the prey. Lastly, I'm not sure what you are referencing when you mention 3 and 18 in the first sentence. +11}}$
+
