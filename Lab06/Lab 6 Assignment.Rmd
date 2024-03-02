@@ -116,6 +116,10 @@ Empirically test for evidence of spatial autocorrelation IN THE MODEL RESIDUALS 
 
 ```{r}
 
+fittedModel = lm(meanBee ~ 1, data=BlueVanes)
+BlueVanes$residuals = residuals(fittedModel)
+
+
 geoBV = as.geodata(BlueVanes)
 plot(BlueVanes)
 
