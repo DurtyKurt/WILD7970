@@ -7,9 +7,13 @@ output: html_notebook
 rm(list=ls())
 
 require(tidyverse)
+require(tidyterra)
 require(pgirmess)
 require(ncf)
 library(geoR)
+require(sf)
+require(terra)
+require(ggplot2)
 ```
 
 
@@ -118,23 +122,86 @@ Empirically test for evidence of spatial autocorrelation IN THE MODEL RESIDUALS 
 
 fittedModel = lm(meanBee ~ 1, data=BlueVanes)
 BlueVanes$residuals = residuals(fittedModel)
+fittedModel
+mean(BlueVanes$meanBee)
 
+## Corelog with residuals
+res_correlogNcf = ncf::correlog(x = BlueVanes$x, y=BlueVanes$y, z=BlueVanes$residuals, increment=5, resamp=100)
 
-geoBV = as.geodata(BlueVanes)
-plot(BlueVanes)
+tmp = cbind(res_correlogNcf$n,
+            res_correlogNcf$mean.of.class,
+            res_correlogNcf$correlation,
+            res_correlogNcf$p) %>% 
+  data.frame() %>% 
+  set_names(c('n', 'dist', 'corr', 'p')) %>% 
+  mutate(significant = ifelse(p < 0.05, 'yes', 'no'))
 
-Varlm = likfit(geoBV, cov.model='gaussian', ini = c(10, 25))
-summary(Varlm)
+ggplot(tmp, aes(x=dist, y=corr))+
+  geom_line()+
+  geom_point(aes(color=significant, size=n))+
+  scale_color_manual(values=c('black', 'red'))+
+  theme_bw()+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept=0, linetype='dashed')+
+  geom_vline(xintercept=maxDist, color='red')+
+  scale_x_continuous(breaks=seq(0, 130, 5))
+
+## Variogram w/residuals
+
+BVr = subset(BlueVanes, select = -c(meanBee) )
+BVr
+geoBVr = as.geodata(BVr)
+plot(geoBVr)
+
+BVvar = variog(geoBVr, max.dist=maxDist, breaks=seq(0, maxDist, by=3))
+plot(BVvar)
+
+mlExp = likfit(geoBVr, cov.model='exp', ini=c(700, 10))
+summary(mlExp)
+
+empEnv = variog.mc.env(geoBVr, obj.var=BVvar, nsim=99)
+plot(BVvar, envelope=empEnv)
+lines(mlExp, col='blue')
+
+#Varlm = likfit(geoBV, cov.model='gaussian', ini = c(10, 25))
+#summary(Varlm)
 ```
 
-Answer the question here.
+The intercept of the lm is 13.93, which is also the average of bee abundance across all sites. I'm trying to interpret this as the value of bee abundance when x = 0, but I'm not sure what x is in this case? My best guess is that bee abundance should be 13.93 regardless of what is going on at any site, if we are assuming there is no other influences on their distribution (just a null model?). After modeling bee abundance based only on the residuals of this lm, the outputs were exactly the same. I'm not entirely sure why this is.    
 
 # Challenge 4 (4 points)
 
 Conventional wisdom indicates that the distribution of floral resources may substantially influence bee abundance. In addition, I am  completely making up the following fact: the average bee has a perceptual range of about 15 m. Below I have provided code for importing a raster that shows the number of flowers counted in 1 m grid cells across the entire study area. Use the focal() function from the previous lab to generate a new raster in which each cell value represents the mean number of flowers in cells within a 15 m radius. Plot the distribution of the blue vane traps over the 15 m focal raster. No text required here, just show me the plot.
 
 ```{r}
-#Place your code here.
+floral = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week6/floralResources.tif')
+floral
+probMatrix = focalMat(floral, 15, type='circle', fillNA=FALSE)
+
+probMatrix
+
+floralfocal = focal(floral, probMatrix, fun='mean')
+floralfocal
+plot(floralfocal)
+
+XY = st_as_sf(BlueVanes, coords=c('x', 'y'))
+
+ggplot()+
+  geom_sf(data=XY)
+
+
+floralplot= ggplot() +
+  geom_raster(data = floralfocal, aes(x=x, y=y, fill=focal_mean))+
+  scale_fill_gradient(low='green', high='red')+
+  geom_sf(data = XY, aes(color=meanBee))
+  # geom_point(data=BlueVanes, aes(x=x, y=y))
+floralplot
+
+finalplot = floralplot+
+  geom_sf(data = XY, aes(color='black'))+
+  scale_shape_manual(values='17')  
+
+finalplot
 ```
 
 No text required
