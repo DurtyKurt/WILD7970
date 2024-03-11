@@ -1,0 +1,281 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+require(tidyterra)
+require(dismo)
+require(tidyverse)
+require(terra)
+require(predicts)
+require(ggnewscale)
+require(mgcv)
+require(randomForest)
+require(maxnet)
+require(enmSdmX)
+require(gbm)
+```
+
+
+
+# Challenge 1 (4 points)
+
+In the lab, we created 6 species distribution models (SDMs) for the same species using 6 different techniques. Plot the maps generated from (1) the bioclim envelope function, (2) the GLM model, and (3) the random forest model next to one another. What similarities and differences do you notice among these maps? What might explain some of these differences?
+
+```{r}
+# Setup
+vathData = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week8/vath_2004.csv')
+
+vathPres = vathData %>% filter(VATH==1)
+vathAbs = vathData %>% filter(VATH==0)
+
+vathPresXy = as.matrix(vathPres %>% select(EASTING, NORTHING))
+vathAbsXy = as.matrix(vathAbs %>% select(EASTING, NORTHING))
+
+vathVal = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week8/vath_VALIDATION.csv')
+
+vathValPres = vathVal %>% filter(VATH==1)
+vathValAbs = vathVal %>% filter(VATH==0)
+
+vathValXy = as.matrix(vathVal %>% select(EASTING, NORTHING))
+vathValPresXy = as.matrix(vathValPres %>% select(EASTING, NORTHING))
+vathValAbsXy = as.matrix(vathValAbs %>% select(EASTING, NORTHING))
+
+elev = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/elevation.tif')
+canopy = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/canopy.tif')
+mesic = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/mesic.tif')
+precip = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/precip.tif')
+
+crs(elev) = crs(mesic)
+crs(canopy) = crs(mesic)
+
+mesic = resample(x = mesic, y = elev, 'near')
+precip = resample(x = precip, y = elev, 'bilinear')
+
+mesic = mask(mesic, elev)
+precip = mask(precip, elev)
+
+probMatrix = focalMat(mesic, 1000, type='circle', fillNA=FALSE)
+mesic1km = focal(mesic, probMatrix, fun='sum')
+
+layers = c(canopy, elev, mesic1km, precip)
+names(layers) = c('canopy', 'elev', 'mesic1km', 'precip')
+
+set.seed(23)
+
+backXy = data.frame(backgroundSample(layers, n=2000, p=vathPresXy))
+
+presCovs = extract(layers, vathPresXy)
+backCovs = extract(layers, backXy)
+valCovs = extract(layers, vathValXy)
+
+presCovs = data.frame(vathPresXy, presCovs, pres=1)
+backCovs = data.frame(backXy, backCovs, pres=0)
+valCovs = data.frame(vathValXy, valCovs)
+
+presCovs = presCovs[complete.cases(presCovs),]
+backCovs = backCovs[complete.cases(backCovs),]
+valCovs = valCovs[complete.cases(valCovs),]
+
+backCovs = backCovs %>% select(-ID)
+colnames(presCovs)[1:2] = c('x', 'y')
+
+presBackCovs = rbind(presCovs, backCovs)
+
+tmp = presCovs %>% select(elev, precip, mesic1km, canopy) %>% 
+  as.matrix()
+
+```
+
+```{r}
+# Models
+
+bioclim = envelope(tmp)
+
+
+plot(bioclim, a=1, b=2, p=0.95)
+plot(bioclim, a=1, b=3, p=0.95)
+plot(bioclim, a=3, b=4, p=0.95)
+
+bioclimMap = predict(layers, bioclim)
+plot(bioclimMap)
+
+glmModel = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presBackCovs)
+
+summary(glmModel)
+
+glmMap = predict(layers, glmModel, type='response')
+plot(glmMap)
+
+rfModel = randomForest(as.factor(pres) ~ canopy + elev + mesic1km + precip, data=presBackCovs, mtry=2, ntree=500, na.action = na.omit)
+
+rfMap = predict(layers, rfModel, type='prob', index=2)
+plot(rfMap)
+
+modelscompared = c(rfMap, bioclimMap, glmMap)
+names(modelscompared) = c('rfMap', 'bioclimMap', 'glmMap')
+plot(modelscompared)
+
+```
+RF seems the most conservative on the surface, with a much larger extent of low 'probabilites' than the other two. On that note, the glm map seems to have the most 'background noise', where regions are more smoothed rather than segregated. I think the distribution of values is a result of pseduoabsence being included, which may as likely be presence points, we just don't know. Additionally, these back ground points are as likley to be presence points (as far as randomness goes), so the ability of the magnitude of effect to be modeled in both presence/absence lends itself towards being more statistically telling of occurrence instead of the environmental conditions themselves at presence points in glm. Still, there's 95 presence points compared to 200 background ones, so the models also biased in the direction of lower values in general. RF is also using these background points and teh same ratio of presence/absence, but it's a lot more statistically robust through bootstrapping and its random trees process, which is where I think the fine scale segregation of values is coming from compared to the other two. Still, I think more presence site representation would likely make it less conservative.  
+
+
+# Challenge 2 (4 points)
+
+When we fit our GLM in lab, we used background points, rather than true absence points, to represent pseudo-absences. Fit the exact same GLM model, only this time use presence and true absence data. That is, replace the background rows in the dataframe with rows that represent actual sites where surveys were completed but Varied Thrush were not detected. Once you've fit the GLM, build a new SDM from this fitted model and visually compare the prediction surface to that built based on the presence-background model. What discrepancies do you notice, and what is your intuition regarding which of these two models is more reliable?
+
+```{r}
+### presabs setup
+
+AbsCovs = extract(layers, vathAbsXy)
+AbsCovs
+
+AbsCovs = data.frame(vathAbsXy, AbsCovs, pres=0)
+AbsCovs
+colnames(AbsCovs)[1] <- "x"
+colnames(AbsCovs)[2] <- "y"
+AbsCovs = AbsCovs[complete.cases(AbsCovs),]
+
+presabsCovs = rbind(presCovs, AbsCovs)
+presabsCovs
+
+```
+
+
+```{r}
+
+presabsGLM = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presabsCovs)
+
+PresAbsGlmMap = predict(layers, presabsGLM, type='response')
+plot(PresAbsGlmMap)
+plot(glmMap)
+
+```
+The range of SDM values doubled after using presence-absence data rather than pseduoabscense. The first reason for this is likely that total presence vs absence points are much more evenly matched, so basically the covariates used in the model are less influenced by the sample size alone of the 'non present' areas. There's more aggregation here with hot spots clustered in the west region and dead zones in the east. This SDM conveys that VATH are more selective in terms of environmental parameters than the pseduoabsence example, so that we should theoretically observe them in higher frequencies in more discrete locations, whereas the pseudoabsence example conveys liklihood of VATH occurence is generally lesser in any given location, but they're covering a greater range in smaller numbers (congregating behavior vs competitive?). I like the true presence/absence data better for it's use of real data rather than pseduoabsence which I'm weary of due to the randomness of just throwing points on non-surveyed locations. There is definitely loss in statistical power through sample size alone, and knowing more about VATH biology/behavior would definitely give me some better insights. 
+
+# Challenge 3 (4 points)
+
+Now plot the relationship between the 4 explanatory variables and the predicted occupancy values based on the two fitted GLM models (presence-background and presence-absence). Recall that we did this in the latter part of our lab. Do you notice any differences in the covariate patterns between the two models? Does this help you interpret the discrepancies between the predicted surfaces from the two models?
+
+```{r}
+tmp = expand.grid(elev = seq(min(presBackCovs$elev), max(presBackCovs$elev), length=1000),
+                  canopy = mean(presBackCovs$canopy),
+                  precip = mean(presBackCovs$precip),
+                  mesic1km = mean(presBackCovs$mesic1km))
+
+elevData = data.frame(presBackGLM = predict(glmModel, tmp, type='response'),
+                      presAbsGLM = predict(presabsGLM, tmp, type='response')) %>% 
+  cbind(tmp) %>% 
+  select(presBackGLM:elev) %>% 
+  pivot_longer(presBackGLM:presAbsGLM) %>% 
+  mutate(variable = 'elevation')
+#ggplot(elevData, aes(x=elev, y=value, color=name))+
+  #facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())    
+
+tmp = expand.grid(elev = mean(presBackCovs$elev),
+                  canopy = seq(min(presBackCovs$canopy), max(presBackCovs$canopy), length=1000),
+                  precip = mean(presBackCovs$precip),
+                  mesic1km = mean(presBackCovs$mesic1km))
+
+canopyData = data.frame(presBackGLM = predict(glmModel, tmp, type='response'),
+                      presAbsGLM = predict(presabsGLM, tmp, type='response')) %>% 
+  cbind(tmp) %>% 
+  select(presBackGLM:presAbsGLM, canopy) %>% 
+  pivot_longer(presBackGLM:presAbsGLM) %>% 
+  mutate(variable = 'canopy')
+#ggplot(canopyData, aes(x=canopy, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())     
+
+tmp = expand.grid(elev = mean(presBackCovs$elev),
+                  canopy = mean(presBackCovs$canopy),
+                  precip = seq(min(presBackCovs$precip), max(presBackCovs$precip), length=1000),
+                  mesic1km = mean(presBackCovs$mesic1km))
+
+precipData = data.frame(presBackGLM = predict(glmModel, tmp, type='response'),
+                      presAbsGLM = predict(presabsGLM, tmp, type='response')) %>% 
+  cbind(tmp) %>% 
+  select(presBackGLM:presAbsGLM, precip) %>% 
+  pivot_longer(presBackGLM:presAbsGLM)%>% 
+  mutate(variable = 'precipitation')
+#ggplot(precipData, aes(x=precip, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())  
+
+tmp = expand.grid(elev = mean(presBackCovs$elev),
+                  canopy = mean(presBackCovs$canopy),
+                  precip = mean(presBackCovs$precip),
+                  mesic1km = seq(min(presBackCovs$mesic1km), max(presBackCovs$mesic1km), length=1000))
+
+mes1kmData = data.frame(presBackGLM = predict(glmModel, tmp, type='response'),
+                      presAbsGLM = predict(presabsGLM, tmp, type='response')) %>% 
+  cbind(tmp) %>% 
+  select(presBackGLM:presAbsGLM, mesic1km) %>% 
+  pivot_longer(presBackGLM:presAbsGLM)%>% 
+  mutate(variable = 'mesic1km')
+#ggplot(mes1kmData, aes(x=precip, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())
+
+
+colnames(elevData)[1] = colnames(canopyData)[1] = colnames(precipData)[1] = colnames(mes1kmData)[1] = 'xValue'
+
+tmp = rbind(elevData, canopyData, precipData, mes1kmData)
+
+ggplot(tmp, aes(x=xValue, y=value, color=name))+
+  facet_wrap(~variable, scales='free_x')+
+  geom_line()+
+  theme_bw()+
+  theme(panel.grid=element_blank())
+
+presabs_results = summary(presabsGLM)
+presabs_results
+presback_results = summary(glmModel)
+presback_results
+
+```
+The differences between each model aren't lightyears apart graphically, but after looking at each regression output, I would prefer to use the presence-absence model myself. Emphasis on each variable is either the same, very close, or flip flopped in terms of significance. I'm revising my statement on abundance/aggregation now from the previous question. It seems like y axis here is more of a confidence of finding an animal, not that you'll find most of them here vs there, although you'd expect that to be the case without knowing much more about competition, etc. Presence/absence seems to be the better predictor, but I feel like this would be worth repeating (not by me) with the same amount of background points as presence/absence points since more background points means more "pseduoabsence" and lower values for species occurence in general. It's still a little difficult to compare these knowing that, but it just makes more confident in the reliability of real data still.
+
+# Challenge 4 (4 points)
+
+Varied Thrush are considered forest-dependent, and thus one might characterize mesic forests as "habitat" for the species. Calculate the total amount of mesic forest in the study area, and the mean size of the mesic forest patches.
+
+Using the SDM built from the random forest model, convert the landscape into "habitat" and "non-habitat." To do this, choose a threshold value in your SDM and convert all cells with predicted outcomes greater than this threshold to 1 and all cells with predicted values below your threshold to 0. Justify your choice of your threshold value. Now calculate the total amount of habitat and mean size of habitat patches based on this new raster (i.e., create patches of "habitat" based on aggregations of cells you deemed 1). How do the habitat amount and patch size values compare between the mesic forest approach and the SDM-based approach? In what situations might you rely on one map over the other?
+
+```{r}
+rfMap[rfMap < 0.5] = 0
+rfMap[rfMap >= 0.5] = 1
+rfMap
+
+ggplot(rfMap, aes(x=x, y=y, color=X1))+
+  theme_bw()+
+  theme(panel.grid=element_blank()) 
+
+HabMap = ggplot() + 
+  new_scale_fill()+
+  geom_spatraster(data=rfMap)+
+  scale_fill_manual(values=c('0' = 'red', '1' = 'green'), na.value=NA)
+HabMap
+
+
+zoomedIn
+
+```
+
+# Challenge 5 (4 points)
+
+When we fit the Maxent model in the lab, we used a regularization constant of 1. Fit the model two more times, using regularization (regmult) constants of 0.5 and 3. Construct figures showing the relationship between the 4 explanatory variables and the predicted outcome from these 3 fitted Maxent models. What is the regularization constant doing? Hint: you may need to Google it.
+
+```{r}
+#Place code here
+```
