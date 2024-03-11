@@ -184,7 +184,9 @@ floralfocal = focal(floral, probMatrix, fun='mean')
 floralfocal
 plot(floralfocal)
 
+
 XY = st_as_sf(BlueVanes, coords=c('x', 'y'))
+
 
 ggplot()+
   geom_sf(data=XY)
@@ -204,14 +206,43 @@ finalplot = floralplot+
 finalplot
 ```
 
-No text required
+
 
 # Challenge 5 (4 points)
 
 Extract the focal flower value from the raster you just created at each point using the extract() function. You now have an estimate for the average number of flowers per meter around each blue vane trap. Fit a second linear model, but this time include average floral abundance within 15 m as a covariate. Export the residuals from this fitted model, and again, examine a corelogram and variogram of the residuals. As always, be sure to plot random envelopes. Now what do you notice?
 
 ```{r}
-#Place your code here.
+coords = cbind(BlueVanes$x, BlueVanes$y)
+colnames(coords) = c('x', 'y')
+coords
+floralXY = extract(floralfocal, coords)
+floralXY
+BVxy_floral = cbind(floralfocal, coords)
+BVxy_floral
+
+
+BVxy = as.matrix(BlueVanes %>% select(x, y))
+BVxy_floral = cbind(floralfocal, BVxy)
+BVxy_floral
+
+floralfocal
+focalmean = extract(floralfocal$focal_mean)
+
+BVr = subset(BlueVanes, select = -c(meanBee) )
+focalmean = subset(floralfocal, select = c(focal_mean))
+
+floralXY = extract(floralfocal, coords)
+floralXY
+AbsCovs2 = data.frame(floralXY, AbsCovs2, pres=0)
+
+BV_floral = cbind(BlueVanes, floralXY)
+
+floralmodel = lm(meanBee ~ floralXY, data=BlueVanes)
+floralmodel$residuals = residuals(floralmodel)
+floralmodel
+mean(BlueVanes$meanBee)
+
 ```
 
 Answer the question here.
