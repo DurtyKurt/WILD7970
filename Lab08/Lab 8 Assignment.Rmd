@@ -15,6 +15,7 @@ require(randomForest)
 require(maxnet)
 require(enmSdmX)
 require(gbm)
+require(landscapemetrics)
 ```
 
 
@@ -253,29 +254,172 @@ Varied Thrush are considered forest-dependent, and thus one might characterize m
 Using the SDM built from the random forest model, convert the landscape into "habitat" and "non-habitat." To do this, choose a threshold value in your SDM and convert all cells with predicted outcomes greater than this threshold to 1 and all cells with predicted values below your threshold to 0. Justify your choice of your threshold value. Now calculate the total amount of habitat and mean size of habitat patches based on this new raster (i.e., create patches of "habitat" based on aggregations of cells you deemed 1). How do the habitat amount and patch size values compare between the mesic forest approach and the SDM-based approach? In what situations might you rely on one map over the other?
 
 ```{r}
-rfMap[rfMap < 0.5] = 0
-rfMap[rfMap >= 0.5] = 1
+rfMap[rfMap < 0.3] = 0
+rfMap[rfMap >= 0.3] = 1
 rfMap
+plot(mesic)
 
-ggplot(rfMap, aes(x=x, y=y, color=X1))+
-  theme_bw()+
-  theme(panel.grid=element_blank()) 
-
-HabMap = ggplot() + 
-  new_scale_fill()+
-  geom_spatraster(data=rfMap)+
-  scale_fill_manual(values=c('0' = 'red', '1' = 'green'), na.value=NA)
-HabMap
+habitat = rfMap %>% 
+  setValues(NA)
+  
+habitat[rfMap ==1] = 1
+habitat
+plot(habitat)
 
 
-zoomedIn
+
+totalarea_RF = lsm_l_ta(habitat, directions = 8)
+totalarea_RF
+meanarea_RF = lsm_l_area_mn(habitat, directions = 8)
+meanarea_RF
+
+totalarea_mesic = lsm_l_ta(mesic, directions = 8)
+totalarea_mesic
+meanarea_mesic = lsm_l_area_mn(mesic, directions = 8)
+meanarea_mesic
+
 
 ```
+
+Total area using the mesic dataset was about 10 times that of random forest and about 25 times that for mean patch area. I settled on a threshold of 0.3 because 0.5 just din't have a lot of area. I suspect that the RF is conservative as it prevents overfitting, but it doesn't quite align with how I imagine a species to be using the landscape (spending a lot of energy hopping from one spot to another vs utilizing high quality habitat as well as some not as high quality habitat near it). I suspect that the appropriate threshold for reducing errors of omission could be even lower, but it's possible that this species is highly selective of mesic forest with additional characteristics (ideal elev, etc.). I think I'd use the RF if I'm more interested in isolating what characteristics within mesic forests are most telling about mesic forest habitat quality. If I think mesic forests are actually the primary driver of this species distribution, I might use this raster alongside other environmental variables for things that we've done in the past (scale of effect, identifying spatial dependence to determine which factors are contributing more than others, etc.).
 
 # Challenge 5 (4 points)
 
 When we fit the Maxent model in the lab, we used a regularization constant of 1. Fit the model two more times, using regularization (regmult) constants of 0.5 and 3. Construct figures showing the relationship between the 4 explanatory variables and the predicted outcome from these 3 fitted Maxent models. What is the regularization constant doing? Hint: you may need to Google it.
 
 ```{r}
-#Place code here
+backCovs = extract(layers, backXy)
+backCovs = data.frame(backXy, backCovs, pres=0)
+backCovs = backCovs[complete.cases(backCovs),]
+backCovs = backCovs %>% select(-ID)
+colnames(presCovs)[1:2] = c('x', 'y')
+
+pbVect = presBackCovs$pres
+covs = presBackCovs %>% select(canopy:precip)
+
+maxentModel_01 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 1,
+                     classes='lqpht')
+
+plot(maxentModel_01, type='logistic')
+maxentModel_01
+
+maxentMap_01 = predictMaxNet(maxentModel_01, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap_01)
+
+
+maxentModel_0p5 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 0.5,
+                     classes='lqpht')
+
+plot(maxentModel_0p5, type='logistic')
+
+maxentMap_0p5 = predictMaxNet(maxentModel_0p5, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap_0p5)
+
+
+maxentModel_03 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 3,
+                     classes='lqpht')
+
+plot(maxentModel_03, type='logistic')
+
+maxentMap_03 = predictMaxNet(maxentModel_03, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap_03)
+
+### Compare
+
+tmp = expand.grid(elev = seq(min(backCovs$elev), max(backCovs$elev), length=1000),
+                  canopy = mean(backCovs$canopy),
+                  precip = mean(backCovs$precip),
+                  mesic1km = mean(backCovs$mesic1km))
+
+elevDataMax = data.frame(maxent_01 = predict(maxentModel_01, tmp, type='logistic')[,1],
+                      maxent_0p5 = predict(maxentModel_0p5, tmp, type='logistic')[,1],
+                      maxent_03 = predict(maxentModel_03, tmp, type='logistic')[,1]) %>% 
+  cbind(tmp) %>% 
+  select(maxent_01:elev) %>% 
+  pivot_longer(maxent_01:maxent_03) %>% 
+  mutate(variable = 'elevation')
+#ggplot(elevData, aes(x=elev, y=value, color=name))+
+  #facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())    
+
+tmp = expand.grid(elev = mean(backCovs$elev),
+                  canopy = seq(min(backCovs$canopy), max(backCovs$canopy), length=1000),
+                  precip = mean(backCovs$precip),
+                  mesic1km = mean(backCovs$mesic1km))
+
+canopyDataMax = data.frame(maxent_01 = predict(maxentModel_01, tmp, type='logistic')[,1],
+                      maxent_0p5 = predict(maxentModel_0p5, tmp, type='logistic')[,1],
+                      maxent_03 = predict(maxentModel_03, tmp, type='logistic')[,1]) %>% 
+  cbind(tmp) %>% 
+  select(maxent_01:maxent_03, canopy) %>% 
+  pivot_longer(maxent_01:maxent_03) %>% 
+  mutate(variable = 'canopy')
+#ggplot(canopyData, aes(x=canopy, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())     
+
+tmp = expand.grid(elev = mean(backCovs$elev),
+                  canopy = mean(backCovs$canopy),
+                  precip = seq(min(backCovs$precip), max(backCovs$precip), length=1000),
+                  mesic1km = mean(backCovs$mesic1km))
+
+precipDataMax = data.frame(maxent_01 = predict(maxentModel_01, tmp, type='logistic')[,1],
+                      maxent_0p5 = predict(maxentModel_0p5, tmp, type='logistic')[,1],
+                      maxent_03 = predict(maxentModel_03, tmp, type='logistic')[,1]) %>% 
+  cbind(tmp) %>% 
+  select(maxent_01:maxent_03, precip) %>% 
+  pivot_longer(maxent_01:maxent_03) %>% 
+  mutate(variable = 'precipitation')
+#ggplot(precipData, aes(x=precip, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())  
+
+tmp = expand.grid(elev = mean(backCovs$elev),
+                  canopy = mean(backCovs$canopy),
+                  precip = mean(backCovs$precip),
+                  mesic1km = seq(min(backCovs$mesic1km), max(backCovs$mesic1km), length=1000))
+
+mesic1kmDataMax = data.frame(maxent_01 = predict(maxentModel_01, tmp, type='logistic')[,1],
+                      maxent_0p5 = predict(maxentModel_0p5, tmp, type='logistic')[,1],
+                      maxent_03 = predict(maxentModel_03, tmp, type='logistic')[,1]) %>% 
+  cbind(tmp) %>% 
+  select(maxent_01:maxent_03, mesic1km) %>% 
+  pivot_longer(maxent_01:maxent_03) %>% 
+  mutate(variable = 'mesic1km')
+#ggplot(mes1kmData, aes(x=precip, y=value, color=name))+
+  # facet_wrap(~variable, scales='free_x')+
+  #geom_line()+
+  #theme_bw()+
+  #theme(panel.grid=element_blank())
+
+
+colnames(elevDataMax)[1] = colnames(canopyDataMax)[1] = colnames(precipDataMax)[1] = colnames(mesic1kmDataMax)[1] = 'xValue'
+
+tmp = rbind(elevDataMax, canopyDataMax, precipDataMax, mesic1kmDataMax)
+
+ggplot(tmp, aes(x=xValue, y=value, color=name))+
+  facet_wrap(~variable, scales='free_x')+
+  geom_line()+
+  theme_bw()+
+  theme(panel.grid=element_blank())
+
 ```
+The regularization parameter is a penalty multiplier to help prevent overfitting. I don't know the math of it, but higher values are heavier penalties and vice versa. It seems that values below 1 will be lean into the parameters of the training data with the risk of overfitting and making the model less applicable to validation in other areas, while values above 1 are preventing overfitting which reduces a models overall probability of occurrence though you could be more confident in it's applications elsewhere.
