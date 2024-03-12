@@ -38,6 +38,9 @@ ggplot(BlueVanes, aes(x=x, y=y, color=meanBee))+
 
 I think this example is a little subjective, but I don't personally see much evidence of spatial dependence. If anything, there may be some level of gradients around points, but I don't think it's very strong here.
 
+$\color{red}{\text{Good. +2}}$
+
+
 # Challenge 2 (3 points)
 
 Empirically test for evidence of spatial dependence in bee abundance by first building a corelogram, then building a semi-variogram. Be sure to provide an envelope for assessing whether the values in each figure are statistically different from what would be expected if the bee values were randomly distributed. Describe the patterns you see, and your interpretation with regards to the spatial dependence in mean bee abundance. Be sure to identify the maximum distance at which you should interpret your figures (2/3 of the maximum distance between points).
@@ -112,6 +115,9 @@ lines(mlExp, col='blue')
 The max distance from one point to another is 130, so 2/3 of that distance is 85.8 and anything above that distance is not considered here. Based on the initial pgrmess corellogram, I would say that there's evidence of both positive & negative correlation for all distance bins other than 55 and 75. This suggests that my plots should probably be either 55 or 75 meters apart to avoid introducing spatial dependence into the point data. However, the coefficients are all pretty low and ultimately may not make a difference. After rerunning with montecarlo, the corelogram suggests that sampling should be at distances 50,55, 65, and 70 meters apart. I would more strongly consider the results of monte carlo here, just because of the repeated simulations (is this bootstrapping?), which I think strengths the results through repeated simulations.
 Based on the semi-variogram, it appears that there is negative spatial correlation at distances up to 25 meters and positive correlation above 75, so any kind of sampling that stays between these values should be unbiased in terms of spatial dependence, and so bees sampled at these distances should reflect bee abundance if they were randomly distributed, to better test a null hypothesis against based on actual abundance observed in those locations.
 
+$\color{red}{\text{You didn't quite interpret the variogram correctly. The low value at short distances indicates low variance among points close to one another which suggests positive autocorrelation. In other words, the correlogram and variogram are telling you the same thing. +2.5}}$
+
+
 # Challenge 3 (4 points)
 
 Fit a simple linear model (assuming a normally distributed error term) that models mean bee abundance as a function of an intercept only (no other covariates in the model). Compare the model-estimated intercept to the bee abundance values averaged across all sites. What do you notice?  
@@ -167,7 +173,10 @@ lines(mlExp, col='blue')
 #summary(Varlm)
 ```
 
-The intercept of the lm is 13.93, which is also the average of bee abundance across all sites. I'm trying to interpret this as the value of bee abundance when x = 0, but I'm not sure what x is in this case? My best guess is that bee abundance should be 13.93 regardless of what is going on at any site, if we are assuming there is no other influence on their distribution (just a null model?). After modeling bee abundance based only on the residuals of this lm, the outputs were exactly the same. I'm not entirely sure why this is.    
+The intercept of the lm is 13.93, which is also the average of bee abundance across all sites. I'm trying to interpret this as the value of bee abundance when x = 0, but I'm not sure what x is in this case? My best guess is that bee abundance should be 13.93 regardless of what is going on at any site, if we are assuming there is no other influence on their distribution (just a null model?). After modeling bee abundance based only on the residuals of this lm, the outputs were exactly the same. I'm not entirely sure why this is.  
+
+$\color{red}{\text{We'll discuss in class. +4}}$
+
 
 # Challenge 4 (4 points)
 
@@ -199,13 +208,14 @@ floralplot= ggplot() +
   # geom_point(data=BlueVanes, aes(x=x, y=y))
 floralplot
 
-finalplot = floralplot+
-  geom_sf(data = XY, aes(color='black'))+
-  scale_shape_manual(values='17')  
-
-finalplot
+# finalplot = floralplot+
+#   geom_sf(data = XY, aes(color='black'))+
+#   scale_shape_manual(values='17')  
+# 
+# finalplot
 ```
 
+$\color{red}{\text{Good. +4}}$
 
 
 # Challenge 5 (4 points)
@@ -271,8 +281,12 @@ lines(mlExp, col='blue')
 ```
 Here, the mean number of flowers around a cell has low values of correlation at all distance bins. Again, there is some significance at 12 and 53 meters, but these are very low values and likely do not have much of an effect between distance bins. The variogram suggests that there is no spatial dependence between any distance bins, so theoretically flower density should be randomly distributed and shouldn't be an issue if it were included as a covariate in a bee abundance model.
 
+$\color{red}{\text{Not quite right, Kurtis. Here, you're modeling spatial dependence in residual bee abundance after accounting for the effects of floral resource density. Your plots are right but your interpretation is not. You're not looking at dependence in flower distribution at all. What you should be seeing is that modeling the effects of floral density on be abundance makes the residual autocorrelation disappear, meaning that it was aggregation in the flowers that was causing aggregation in the bees. +3}}$
+
+
 # Challenge 6 (3 points)
 
 The flower density metric was randomly distributed across the study area, so this doesn't seem to be an underlying driver of bee abundance. Based on the correlograms, low distances bins were highly correlated with bee abundance, which I interpret as at any trap, the abundance of bees will be similar to a trap near it. As you move further and further away, abundance becomes more independent of the abundance in traps at further distances. This shows evidence of spatial dependence at low values, which is to 'bee' expected for most things based on the toblers first law of geography. The results of semivariograms suggest that something is driving spatial dependence at both low and high distance bins. My best guess for the high end is that there is some difference in floral communities that is being picked up at this scale, whereas the low and middle bins are generally in the same community. It appears that bees are more aggregated in one community than the other.
 
+$\color{red}{\text{See my note above. +1.5}}$
 
