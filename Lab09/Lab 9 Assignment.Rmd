@@ -277,82 +277,63 @@ Is this ensemble model an improvement over one of the models you built previousl
 
 ```{r}
 # Extract and create new back/pres/val datasets
-ens_presCovs = extract(ensemble, vathPresXy)
-ens_presCovs
-ens_presCovs = data.frame(vathPresXy, ens_presCovs, pres=1)
-ens_presCovs
-ens_presCovs = ens_presCovs[complete.cases(ens_presCovs),]
-ens_presCovs
 
-ens_valCovs = extract(ensemble, vathValXy)
-ens_valCovs = data.frame(vathValXy, ens_valCovs)
-
-ens_backcov = extract(ensemble, backXy)
-ens_backcov
-ens_backcov = data.frame(backXy, ens_backcov, pres=0)
-ens_backcov
-ens_backcov = ens_backcov[complete.cases(ens_backcov),]
-ens_backcov
-
-ens_backcov = ens_backcov %>% select(-ID)
-colnames(ens_presCovs)[1:2] = c('x', 'y')
-
-ens_presBackCovs = rbind(ens_presCovs, ens_backcov)
-ens_presBackCovs
-
-# discrimination stats data frame setup
-tmp = ens_valCovs %>% mutate(VATH = vathVal$VATH)
+tmp = valCovs %>% mutate(VATH = vathVal$VATH)
 tmp = tmp[complete.cases(tmp),]
 
+newValcovs = valCovs[complete.cases(valCovs),]
+newValcovsXy = as.matrix(newValcovs %>% select(EASTING, NORTHING))
 
-ens_valData = data.frame('ID' = 1:nrow(tmp)) %>% 
-  mutate(obs = tmp$VATH,
-         ens_valCovs)
+ens_valdata = valData[,1:2]
+ens_valdata$ensemble = extract(ensemble, newValcovsXy)
+ens_valdata
+colnames(ens_valdata)[3] = 'ensemble'
+
 
 # discrimination stats for all models
 
-summaryEval = data.frame(matrix(nrow=0, ncol=9))
+ens_summaryEval = data.frame(matrix(nrow=0, ncol=9))
 
-nModels = ncol(valData)-2
+ens_nModels = ncol(ens_valdata)-2
+auc = auc(ens_valdata)
 
-
-for(i in 1:nModels){
+for(i in 1:ens_nModels){
   
   #AUC
-  auc = auc(valData, which.model = i)
+  auc = auc(ens_valdata, which.model = i)
   
   #Find threshold to maximize Kappa
-  kappaOpt = optimal.thresholds(valData, which.model = i, opt.methods=3)
+  kappaOpt = optimal.thresholds(ens_valdata, which.model = i, opt.methods=3)
   
   #Sensitivity
-  sens = sensitivity(cmx(valData, which.model=i, threshold = kappaOpt[[2]]))
+  sens = sensitivity(cmx(ens_valdata, which.model=i, threshold = kappaOpt[[2]]))
   
   #Specificity
-  spec = specificity(cmx(valData, which.model = i, threshold = kappaOpt[[2]]))
+  spec = specificity(cmx(ens_valdata, which.model = i, threshold = kappaOpt[[2]]))
   
   #True skill statistic
   tss = sens$sensitivity + spec$specificity - 1
   
   #Kappa
-  kappa = Kappa(cmx(valData, which.model = i, threshold = kappaOpt[[2]]))
+  kappa = Kappa(cmx(ens_valdata, which.model = i, threshold = kappaOpt[[2]]))
   
   #Correlation between predicted and realized values
-  corr = cor.test(valData[,2], valData[,i+2])$estimate
+  corr = cor.test(ens_valdata[,2], ens_valdata[,i+2])$estimate
   
   #Log likelihood
-  ll = sum(log(valData[,i+2]*valData[,2] + (1-valData[,i+2]) * (1-valData[,2])))
-  ll = ifelse(ll == '-Inf', sum(log(valData[,i+2] + 0.01)*valData[,2] + log((1-valData[,i+2]))*(1-valData[,2])), ll)
+  ll = sum(log(ens_valdata[,i+2]*ens_valdata[,2] + (1-ens_valdata[,i+2]) * (1-ens_valdata[,2])))
+  ll = ifelse(ll == '-Inf', sum(log(ens_valdata[,i+2] + 0.01)*ens_valdata[,2] + log((1-ens_valdata[,i+2]))*(1-ens_valdata[,2])), ll)
   
   #Put them all together and save the values
   summaryI = c(i, auc$AUC, corr, ll, kappaOpt[[2]], sens$sensitivity, spec$specificity, tss, kappa[[1]])
-  summaryEval = rbind(summaryEval, summaryI)
+  ens_summaryEval = rbind(ens_summaryEval, summaryI)
 }
 
-summaryEval = summaryEval %>% 
+ens_summaryEval = ens_summaryEval %>% 
   setNames(c('model', 'auc', 'corr', 'll', 'threshold', 'sens', 'spec', 'tss', 'kappa')) %>% 
-  mutate(model = colnames(valData)[3:8])
+  mutate(model = colnames(ens_valdata)[3:4])
 
-summaryEval
+ens_summaryEval
 
 
 
