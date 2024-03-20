@@ -285,9 +285,9 @@ newValcovs = valCovs[complete.cases(valCovs),]
 newValcovsXy = as.matrix(newValcovs %>% select(EASTING, NORTHING))
 
 ens_valdata = valData[,1:2]
-ens_valdata$ensemble = extract(ensemble, newValcovsXy)
+ens_valdata$ensemble = extract(ensemble, newValcovsXy)[,1]
 ens_valdata
-colnames(ens_valdata)[3] = 'ensemble'
+# colnames(ens_valdata)[3] = 'ensemble'
 
 
 # discrimination stats for all models
@@ -299,7 +299,7 @@ ens_nModels = ncol(ens_valdata)-2
 for(i in 1:ens_nModels){
   
   #AUC
-  auc = auc(valData, which.model = i)
+  auc = auc(ens_valdata, which.model = i)
   
   #Find threshold to maximize Kappa
   kappaOpt = optimal.thresholds(ens_valdata, which.model = i, opt.methods=3)
@@ -329,8 +329,7 @@ for(i in 1:ens_nModels){
 }
 
 ens_summaryEval = ens_summaryEval %>% 
-  setNames(c('model', 'auc', 'corr', 'll', 'threshold', 'sens', 'spec', 'tss', 'kappa')) %>% 
-  mutate(model = colnames(ens_valdata)[3:4])
+  setNames(c('model', 'auc', 'corr', 'll', 'threshold', 'sens', 'spec', 'tss', 'kappa'))
 
 ens_summaryEval
 
