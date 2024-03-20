@@ -295,12 +295,11 @@ colnames(ens_valdata)[3] = 'ensemble'
 ens_summaryEval = data.frame(matrix(nrow=0, ncol=9))
 
 ens_nModels = ncol(ens_valdata)-2
-auc = auc(ens_valdata)
 
 for(i in 1:ens_nModels){
   
   #AUC
-  auc = auc(ens_valdata, which.model = i)
+  auc = auc(valData, which.model = i)
   
   #Find threshold to maximize Kappa
   kappaOpt = optimal.thresholds(ens_valdata, which.model = i, opt.methods=3)
