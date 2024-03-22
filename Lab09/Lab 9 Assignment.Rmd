@@ -332,6 +332,7 @@ ens_summaryEval = ens_summaryEval %>%
   setNames(c('model', 'auc', 'corr', 'll', 'threshold', 'sens', 'spec', 'tss', 'kappa'))
 
 ens_summaryEval
+summaryEval
 
 
 
@@ -349,6 +350,20 @@ In the lab we built models using presence-background data then validated those m
 Fit a GLM using the presence-background data as we did in the lab (i.e., use the presBackCovs dataframe). Fit a second GLM using the presence-absence data (i.e., use the presAbsCovs dataframe). Validate both of these models on the novel presence-absence data (valCovs dataset). Specifically, calculate and compare AUC, Kappa, and TSS for these two models. Which model does a better job of prediction for the validation data and why do you think that is? 
 
 ```{r}
+# Abs Covs Setup
+AbsCovs = extract(layers, vathAbsXy)
+AbsCovs
+
+AbsCovs = data.frame(vathAbsXy, AbsCovs, pres=0)
+AbsCovs
+colnames(AbsCovs)[1] <- "x"
+colnames(AbsCovs)[2] <- "y"
+AbsCovs = AbsCovs[complete.cases(AbsCovs),]
+
+presAbsCovs = rbind(presCovs, AbsCovs)
+presAbsCovs
+
+
 # Fitting GLM w/presabs
 glmModel_presabs = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presAbsCovs)
 
@@ -420,7 +435,34 @@ While some of these metrics are now just slighlty different, the ones that have 
 Now calculate the same statistics (AUC, Kappa, and TSS) for each model you developed in Challenge 4 using K-fold validation with 5 groups. Do these models perform better or worse based on K-fold validation (as compared to validation based on novel data)? Why might that occur?
 
 ```{r}
-#Place your code here
+# Create folds
+set.seed(23)
+
+nFolds = 5
+absCov_folds = kfold(AbsCovs, k=nFolds)
+presCovs_folds = kfold(presCovs, k=nFolds)
+##
+glmModel_presabs = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presAbsCovs)
+
+glmMap_presabs = predict(layers, glmModel_presabs, type='response')
+
+# Glm with kfold
+kfoldVals = rep(NA, nFolds)
+
+for(i in 1:nFolds){
+  valpresabs = presAbsCovs[kfoldpresabs==i,]
+  
+  trainpres = presCovs[presCovs_folds!=i,]
+  trainabs = AbsCovs[absCov_folds!=i,]
+  trainboth = rbind(trainpres, trainabs)
+  
+  glmModel_kfold = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=trainboth)
+
+  valData = data.frame('ID' = 1:nrow(valPres)) %>% 
+  mutate(obs = valPres$pres,
+         glmVal = predict(glmModel_kfold, valPres %>% select(canopy:precip), type='response'))
+}
+
 ```
 
 Answer the question here.
