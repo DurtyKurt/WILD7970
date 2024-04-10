@@ -121,6 +121,9 @@ plot(modelscompared)
 ```
 RF seems the most conservative on the surface, with a much larger extent of low 'probabilites' than the other two. On that note, the glm map seems to have the most 'background noise', where regions are more smoothed rather than segregated. I think the distribution of values is a result of pseduoabsence being included, which may as likely be presence points, we just don't know. Additionally, these back ground points are as likley to be presence points (as far as randomness goes), so the ability of the magnitude of effect to be modeled in both presence/absence lends itself towards being more statistically telling of occurrence instead of the environmental conditions themselves at presence points in glm. Still, there's 95 presence points compared to 200 background ones, so the models also biased in the direction of lower values in general. RF is also using these background points and teh same ratio of presence/absence, but it's a lot more statistically robust through bootstrapping and its random trees process, which is where I think the fine scale segregation of values is coming from compared to the other two. Still, I think more presence site representation would likely make it less conservative.  
 
+$\color{red}{\text{Nice. +4}}$
+
+
 
 # Challenge 2 (4 points)
 
@@ -154,6 +157,9 @@ plot(glmMap)
 
 ```
 The range of SDM values doubled after using presence-absence data rather than pseduoabscense. The first reason for this is likely that total presence vs absence points are much more evenly matched, so basically the covariates used in the model are less influenced by the sample size alone of the 'non present' areas. There's more aggregation here with hot spots clustered in the west region and dead zones in the east. This SDM conveys that VATH are more selective in terms of environmental parameters than the pseduoabsence example, so that we should theoretically observe them in higher frequencies in more discrete locations, whereas the pseudoabsence example conveys liklihood of VATH occurence is generally lesser in any given location, but they're covering a greater range in smaller numbers (congregating behavior vs competitive?). I like the true presence/absence data better for it's use of real data rather than pseduoabsence which I'm weary of due to the randomness of just throwing points on non-surveyed locations. There is definitely loss in statistical power through sample size alone, and knowing more about VATH biology/behavior would definitely give me some better insights. 
+
+$\color{red}{\text{Excellent. +4}}$
+
 
 # Challenge 3 (4 points)
 
@@ -247,6 +253,9 @@ presback_results
 ```
 The differences between each model aren't lightyears apart graphically, but after looking at each regression output, I would prefer to use the presence-absence model myself. Emphasis on each variable is either the same, very close, or flip flopped in terms of significance. I'm revising my statement on abundance/aggregation now from the previous question. It seems like y axis here is more of a confidence of finding an animal, not that you'll find most of them here vs there, although you'd expect that to be the case without knowing much more about competition, etc. Presence/absence seems to be the better predictor, but I feel like this would be worth repeating (not by me) with the same amount of background points as presence/absence points since more background points means more "pseduoabsence" and lower values for species occurence in general. It's still a little difficult to compare these knowing that, but it just makes more confident in the reliability of real data still.
 
+$\color{red}{\text{Good. +4}}$
+
+
 # Challenge 4 (4 points)
 
 Varied Thrush are considered forest-dependent, and thus one might characterize mesic forests as "habitat" for the species. Calculate the total amount of mesic forest in the study area, and the mean size of the mesic forest patches.
@@ -282,6 +291,9 @@ meanarea_mesic
 ```
 
 Total area using the mesic dataset was about 10 times that of random forest and about 25 times that for mean patch area. I settled on a threshold of 0.3 because 0.5 just din't have a lot of area. I suspect that the RF is conservative as it prevents overfitting, but it doesn't quite align with how I imagine a species to be using the landscape (spending a lot of energy hopping from one spot to another vs utilizing high quality habitat as well as some not as high quality habitat near it). I suspect that the appropriate threshold for reducing errors of omission could be even lower, but it's possible that this species is highly selective of mesic forest with additional characteristics (ideal elev, etc.). I think I'd use the RF if I'm more interested in isolating what characteristics within mesic forests are most telling about mesic forest habitat quality to prioritize those areas somehow (where to put nest boxes, where to harvest vs not harvest) whereby I'm identifying realized niches versus the landcover itself for looking at fundamental niches.
+
+$\color{red}{\text{Great. +4}}$
+
 
 # Challenge 5 (4 points)
 
@@ -423,3 +435,5 @@ ggplot(tmp, aes(x=xValue, y=value, color=name))+
 
 ```
 The regularization parameter is a penalty multiplier to help prevent overfitting. I don't know the math of it, but higher values are heavier penalties and vice versa. It seems that values below 1 will be lean into the parameters of the training data with the risk of overfitting and making the model less applicable to validation in other areas, while values above 1 are preventing overfitting which reduces a models overall probability of occurrence though you could be more confident in it's applications elsewhere.
+
+$\color{red}{\text{Excellent work, Kurtis. +4}}$
