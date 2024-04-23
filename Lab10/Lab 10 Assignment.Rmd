@@ -315,9 +315,14 @@ ModelsTable$Kdens = kde95Sf$area
 ModelsTable$Locoh = Locoh
 ModelsTable$Brown = brown
 
+ModelsTable
+
 ```
 
 No text necessary.
+
+
+$\color{red}{\text{Good, although your MCP estimates are on a different scale, and the table didn't output from the code. +3}}$
 
 
 # Challenge 2 (4 points)
@@ -338,7 +343,10 @@ boxplot(MCPcats, Kdenscats, Locohcats, Browncats, log="y",
 
 ```
 
-MCP had much larger HR values than other methods, and so for visual purposes, the y axis (area) was log transformed. Much larger area values in MCP was th result of it's broad strokes approach, where 95% of the core area between points is included. The lower values in other methods reflect the more precision based approach of defining that core area relative to movement, or arrangement of point location data. Locoh seems to the most even distributed range of values for all cats, whereas Brown has the largest. I'm assuming that's whats going on with the dot over it, but its max value (cat 130) is several degrees of magnitude larger than all other cats with this method. Because it homes in on the temporal aspect more, I think cat 130 spent enough time in the long path it took outside of the core area, that this was considered a part of it's home range whereas others gave it less weight. Other than this outlier, it's range is the smallest. If time/distance between points was relatively consistant for all cats, I could see this sort of 'standardizing' the dataset to a smaller range. It makes sense that Locoh would have lower values in general, since it's whole thing is to create the smallest possible polygons for contiguity. I think more variance in area is captured by kernel density through bandwidth functions, etc., and brownian models, so that it's reasonable to attribute more area to the amount of variance in those methods. Probably a huge oversimplification, but I'm drinking from a fire hydrant on how exactly this works in the land of statistics.      
+MCP had much larger HR values than other methods, and so for visual purposes, the y axis (area) was log transformed. Much larger area values in MCP was th result of it's broad strokes approach, where 95% of the core area between points is included. The lower values in other methods reflect the more precision based approach of defining that core area relative to movement, or arrangement of point location data. Locoh seems to the most even distributed range of values for all cats, whereas Brown has the largest. I'm assuming that's whats going on with the dot over it, but its max value (cat 130) is several degrees of magnitude larger than all other cats with this method. Because it homes in on the temporal aspect more, I think cat 130 spent enough time in the long path it took outside of the core area, that this was considered a part of it's home range whereas others gave it less weight. Other than this outlier, it's range is the smallest. If time/distance between points was relatively consistant for all cats, I could see this sort of 'standardizing' the dataset to a smaller range. It makes sense that Locoh would have lower values in general, since it's whole thing is to create the smallest possible polygons for contiguity. I think more variance in area is captured by kernel density through bandwidth functions, etc., and brownian models, so that it's reasonable to attribute more area to the amount of variance in those methods. Probably a huge oversimplification, but I'm drinking from a fire hydrant on how exactly this works in the land of statistics.  
+
+$\color{red}{\text{Good reasoning, though note again that MCP was on a completely different scale. +4}}$
+
 
 # Challenge 3 (3 points)
 
@@ -374,6 +382,9 @@ Wet Forest = 54.43218 /1143 -> 5.07%
 Dry Forest = 162.265 /1143 -> 14.61%
 
 No. Being a 100% home range as a MCP, there is no doubt that it doesn't utilize all the space within this area. There might be forested areas it doesn't utilize at all depending on whats around them and we might get a better idea with a different home range model.
+
+$\color{red}{\text{Nice. +3}}$
+
 
 
 # Challenge 4 (6 points)
@@ -484,9 +495,13 @@ ggplot(BB_Table.long, aes(ID, value, colour = variable)) + geom_line() +
 ```
 
 
+$\color{red}{\text{Good. +6}}$
+
 
 # Challenge 5 (3 points)
 
 It seems that the estimates of a 100% MCP  considered non-forested areas outside of core areas too much. That's why I take it that there's more of either forest type available in lesser home range areas for Brownian models. My take is that both start declining in availability to some extent as home ranges exceed a 35% core area. I would expect the home range to have more wet forest available if the panther truly liked it better, but I know that's too simple. I think the most important thing to note is how dry forest increases with core area initially, and how wet forest declines. They both decline after 35%, but it seems like its core area is more dry forest dominant until there's no more to go around.There's still not enough info to answer it trully, but the evidence here supports dry forest. And yes. I am not surprised that this amount wasn't truly available to them at 100%, just because of the nature of MCP. 
+
+$\color{red}{\text{Pretty good. Note that selection is implied by the ratio of what is used to what is available, so the fact that your red and blue lines are above your black lines is what you should be looking at. +2}}$
 
 
